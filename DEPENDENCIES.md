@@ -302,34 +302,51 @@ See LICENSES/ directory for full license texts.
 
 ---
 
-## Frappe Health and Frappe Drive (MIT License)
+## Frappe Health and Frappe Drive (GPL-3.0 / AGPL-3.0 Licenses)
 
 ### Overview
 
 This application also integrates with two additional Frappe ecosystem modules:
 
-- **[Frappe Health](https://github.com/frappe/health)** - Healthcare management module (MIT Licensed)
-- **[Frappe Drive](https://github.com/frappe/drive)** - Document management and file sharing (MIT Licensed)
+- **[Frappe Health](https://github.com/frappe/health)** - Healthcare management module (GPL-3.0 Licensed)
+- **[Frappe Drive](https://github.com/frappe/drive)** - Document management and file sharing (AGPL-3.0 Licensed)
 
 Both modules are accessed and used in the same manner as the Frappe Framework:
 
 ### License Details
 
-Both Frappe Health and Frappe Drive are licensed under the MIT License, identical to the Frappe Framework.
+Both Frappe Health and Frappe Drive are licensed under GPL family licenses, which are copyleft licenses.
 
-**License**: MIT License  
-**Integration**: Library import / Framework extension  
-**Code Inclusion**: No (installed as external packages)  
-**License Impact**: MIT is fully compatible with Apache 2.0  
+**Frappe Health**: GPL-3.0 License
+**Integration**: Library import / Framework extension
+**Code Inclusion**: No (installed as external packages)
+**License Impact**: GPL-3.0 applies to the Frappe Health module code only
 
-### Why MIT is Compatible
+**Frappe Drive**: AGPL-3.0 License  
+**Integration**: Library import / Framework extension
+**Code Inclusion**: No (installed as external packages)
+**License Impact**: AGPL-3.0 applies to the Frappe Drive module code only
 
-Like Frappe Framework, both modules are MIT-licensed, which means:
+### Why These Licenses Matter
 
-1. **Permissive License**: MIT allows use in projects with different licenses
-2. **No Copyleft**: MIT does not impose restrictions on derivative works
-3. **Custom Application**: Applications built on these modules are not restricted by MIT
-4. **Apache 2.0 Compatible**: Apache 2.0 is also permissive and fully compatible with MIT
+Unlike MIT-licensed components, Frappe Health (GPL-3.0) and Frappe Drive (AGPL-3.0) are copyleft licenses. However, similar to ERPNext:
+
+1. **Separate Deployment**: Both are used as libraries/framework extensions
+2. **No Code Embedding**: We do NOT include, modify, or redistribute their source code
+3. **Library Exception**: When used as imported packages/libraries, they do NOT contaminate our Apache 2.0 license
+4. **License Boundary**: GPL-3.0 and AGPL-3.0 terms apply only to modifications to these modules themselves
+
+### Key Licensing Considerations
+
+**If you modify Frappe Health or Frappe Drive**:
+- Your modifications must be licensed under GPL-3.0 or AGPL-3.0 respectively
+- You must provide source code access for those modifications
+- This does NOT affect the Apache 2.0 license of dartwing-frappe
+
+**If you only use them as-is**:
+- You are using GPL-licensed software as a library
+- No license contamination occurs to dartwing-frappe
+- Your custom code remains Apache 2.0 licensed
 
 ### GitHub References
 
@@ -342,15 +359,9 @@ For more information on these projects, visit:
 ### Updated License Summary
 
 | Component | License | Integration Type | Code Inclusion | License Impact |
-|-----------|---------|------------------|-----------------|----------------|
+|-----------|---------|------------------|----------------|----------------|
 | dartwing-frappe | Apache 2.0 | N/A | This repo | Primary license |
 | Frappe Framework | MIT | Library import | No | MIT is compatible with Apache 2.0 |
-| Frappe Health | MIT | Library import | No | MIT is compatible with Apache 2.0 |
-| Frappe Drive | MIT | Library import | No | MIT is compatible with Apache 2.0 |
+| Frappe Health | GPL-3.0 | Library import | No | GPL-3.0 applies to Health module only |
+| Frappe Drive | AGPL-3.0 | Library import | No | AGPL-3.0 applies to Drive module only |
 | ERPNext | GPL-3.0 | HTTP/RPC API | No | No GPL contamination |
-
----
-
-**Last Updated**: November 2025
-
-**Note**: This document is provided for informational purposes. It is not legal advice. Consult legal counsel if you have questions about license compliance.
