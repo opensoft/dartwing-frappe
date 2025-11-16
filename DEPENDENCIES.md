@@ -300,4 +300,57 @@ See LICENSES/ directory for full license texts.
 
 **Last Updated**: November 2025
 
+---
+
+## Frappe Health and Frappe Drive (MIT License)
+
+### Overview
+
+This application also integrates with two additional Frappe ecosystem modules:
+
+- **[Frappe Health](https://github.com/frappe/health)** - Healthcare management module (MIT Licensed)
+- **[Frappe Drive](https://github.com/frappe/drive)** - Document management and file sharing (MIT Licensed)
+
+Both modules are accessed and used in the same manner as the Frappe Framework:
+
+### License Details
+
+Both Frappe Health and Frappe Drive are licensed under the MIT License, identical to the Frappe Framework.
+
+**License**: MIT License  
+**Integration**: Library import / Framework extension  
+**Code Inclusion**: No (installed as external packages)  
+**License Impact**: MIT is fully compatible with Apache 2.0  
+
+### Why MIT is Compatible
+
+Like Frappe Framework, both modules are MIT-licensed, which means:
+
+1. **Permissive License**: MIT allows use in projects with different licenses
+2. **No Copyleft**: MIT does not impose restrictions on derivative works
+3. **Custom Application**: Applications built on these modules are not restricted by MIT
+4. **Apache 2.0 Compatible**: Apache 2.0 is also permissive and fully compatible with MIT
+
+### GitHub References
+
+For more information on these projects, visit:
+
+- **Frappe Health**: https://github.com/frappe/health
+- **Frappe Drive**: https://github.com/frappe/drive
+- **Frappe Framework**: https://github.com/frappe/frappe
+
+### Updated License Summary
+
+| Component | License | Integration Type | Code Inclusion | License Impact |
+|-----------|---------|------------------|-----------------|----------------|
+| dartwing-frappe | Apache 2.0 | N/A | This repo | Primary license |
+| Frappe Framework | MIT | Library import | No | MIT is compatible with Apache 2.0 |
+| Frappe Health | MIT | Library import | No | MIT is compatible with Apache 2.0 |
+| Frappe Drive | MIT | Library import | No | MIT is compatible with Apache 2.0 |
+| ERPNext | GPL-3.0 | HTTP/RPC API | No | No GPL contamination |
+
+---
+
+**Last Updated**: November 2025
+
 **Note**: This document is provided for informational purposes. It is not legal advice. Consult legal counsel if you have questions about license compliance.
