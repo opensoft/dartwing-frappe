@@ -1,0 +1,29 @@
+services:
+  dartwing-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: ${USER:-brett}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: dartwing-frappe-dev
+    volumes:
+      - ../:/workspace:cached
+      # Mount the Frappe bench from the main frappe project on host
+      - /home/brett/projects/frappe/development/frappe-bench:/workspace/development/frappe-bench:rw
+    command: sleep infinity
+    networks:
+      - frappe_frappe-network
+    environment:
+      # Connect to existing Frappe infrastructure services
+      - DB_HOST=frappe-mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=frappe-redis-cache:6379
+      - REDIS_QUEUE=frappe-redis-queue:6379
+      - REDIS_SOCKETIO=frappe-redis-socketio:6379
+
+networks:
+  # Reference the external network created by the main frappe devcontainer
+  frappe_frappe-network:
+    external: true

@@ -1,0 +1,46 @@
+{
+  "name": "Dartwing Frappe App Development",
+  
+  // This devcontainer connects to the existing Frappe infrastructure
+  // Started from /home/brett/projects/frappe
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dartwing-dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  
+  "initializeCommand": "docker network inspect frappe_frappe-network >/dev/null 2>&1 || echo 'Warning: frappe_frappe-network not found! Start the main Frappe devcontainer first.'",
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "anthropic.claude-dev",
+        "sourcegraph.cody-ai",
+        "continue.continue"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/development/frappe-bench/env/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  },
+  
+  "remoteUser": "${localEnv:USER}",
+  
+  "postCreateCommand": "echo 'Dartwing Frappe development environment ready'",
+  "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/development/frappe-bench'"
+}
