@@ -12,6 +12,8 @@ services:
       - ../:/workspace:cached
       # Mount the Frappe bench from the main frappe project on host
       - /home/brett/projects/frappe/development/frappe-bench:/workspace/development/frappe-bench:rw
+      # Mount Docker socket to enable docker commands inside container
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     command: sleep infinity
     networks:
       - frappe_frappe-network
