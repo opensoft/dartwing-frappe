@@ -8,7 +8,7 @@ echo "=========================================="
 # Configuration
 BENCH_PATH="/workspace/development/frappe-bench"
 SITE_NAME="dartwing.localhost"
-APP_NAME="dartwing_frappe"
+APP_NAME="dartwing"
 ADMIN_PASSWORD="admin"
 DB_ROOT_PASSWORD="frappe"
 
@@ -49,17 +49,9 @@ fi
 # Step 3: Check if app exists
 echo -e "${BLUE}[3/4] Checking if app '$APP_NAME' exists...${NC}"
 if [ ! -d "apps/$APP_NAME" ]; then
-    echo -e "${YELLOW}  → Creating app '$APP_NAME'${NC}"
-    # Create app with interactive input
-    bench new-app $APP_NAME --no-git <<EOF
-Dartwing Frappe
-Dartwing backend API and business logic
-Dartwingers
-dev@dartwingers.com
-mit
-n
-EOF
-    echo -e "${GREEN}  ✓ App created successfully${NC}"
+    echo -e "${YELLOW}  → Cloning app '$APP_NAME' from GitHub${NC}"
+    bench get-app git@github.com:opensoft/frappe-app-dartwing.git
+    echo -e "${GREEN}  ✓ App cloned successfully${NC}"
 else
     echo -e "${GREEN}  ✓ App already exists${NC}"
 fi
