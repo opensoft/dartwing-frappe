@@ -1,0 +1,22 @@
+[project]
+name = "family_manager"
+version = "0.0.1"
+description = "Manage family organizations"
+authors = [
+    { name = "Brett", email = "admin@example.com" }
+]
+dependencies = [
+    "frappe"
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench]
+source_link = "family_manager"
+
+[project.entry-points."frappe"]
+family_manager = "family_manager"
