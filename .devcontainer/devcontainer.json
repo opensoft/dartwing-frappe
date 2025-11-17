@@ -8,21 +8,35 @@
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   
-  "initializeCommand": "docker network inspect frappe_frappe-network >/dev/null 2>&1 || echo 'Warning: frappe_frappe-network not found! Start the main Frappe devcontainer first.' && docker rm -f dartwing-frappe-dev 2>/dev/null || true",
+  "initializeCommand": "docker network inspect frappe-network >/dev/null 2>&1 || echo 'Warning: frappe-network not found! Start the main Frappe devcontainer first.' && docker rm -f dartwing-frappe 2>/dev/null || true",
   
   "customizations": {
     "vscode": {
       "extensions": [
+        // Python extensions
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.black-formatter",
         "ms-python.isort",
+        // Infrastructure extensions
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
-        "anthropic.claude-dev",
+        "continue.continue",
+        "ms-azuretools.vscode-docker",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "k--kato.docomment",
+        // AI assistance extensions
         "sourcegraph.cody-ai",
-        "continue.continue"
+        "anthropic.claude-dev",
+        "anthropic.claude-code",
+        "openai.chatgpt",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "Google.geminicodeassistant",
+        "google.gemini-cli-vscode-ide-companion"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/workspace/development/frappe-bench/env/bin/python",
