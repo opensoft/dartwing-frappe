@@ -35,3 +35,4 @@ Thumbs.db
 # Environment
 .env
 .devcontainer/.env
+.devcontainer/docker-compose.override.yml
