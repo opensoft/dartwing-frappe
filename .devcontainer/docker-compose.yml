@@ -14,6 +14,11 @@ services:
       - /home/brett/projects/frappe/development/frappe-bench:/workspace/development/frappe-bench:rw
       # Mount Docker socket to enable docker commands inside container
       - /var/run/docker.sock:/var/run/docker.sock:rw
+      # Mount zsh config files from host
+      - /home/brett/.zshrc:/home/brett/.zshrc:ro
+      - /home/brett/.p10k.zsh:/home/brett/.p10k.zsh:ro
+      - /home/brett/.zsh_history:/home/brett/.zsh_history:rw
+      - /home/brett/.oh-my-zsh:/home/brett/.oh-my-zsh:ro
     command: sleep infinity
     networks:
       - frappe_frappe-network
