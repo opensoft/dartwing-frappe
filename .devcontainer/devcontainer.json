@@ -8,7 +8,7 @@
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   
-  "initializeCommand": "docker network inspect frappe_frappe-network >/dev/null 2>&1 || echo 'Warning: frappe_frappe-network not found! Start the main Frappe devcontainer first.'",
+  "initializeCommand": "docker network inspect frappe_frappe-network >/dev/null 2>&1 || echo 'Warning: frappe_frappe-network not found! Start the main Frappe devcontainer first.' && docker rm -f dartwing-frappe-dev 2>/dev/null || true",
   
   "customizations": {
     "vscode": {
