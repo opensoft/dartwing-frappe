@@ -50,14 +50,15 @@ fi
 echo -e "${BLUE}[3/4] Checking if app '$APP_NAME' exists...${NC}"
 if [ ! -d "apps/$APP_NAME" ]; then
     echo -e "${YELLOW}  → Creating app '$APP_NAME'${NC}"
-    # Create app non-interactively
-    bench new-app $APP_NAME \
-        --title "Dartwing Frappe" \
-        --description "Dartwing backend API and business logic" \
-        --publisher "Dartwingers" \
-        --email "dev@dartwingers.com" \
-        --license "mit" \
-        --no-git
+    # Create app with interactive input
+    bench new-app $APP_NAME --no-git <<EOF
+Dartwing Frappe
+Dartwing backend API and business logic
+Dartwingers
+dev@dartwingers.com
+mit
+n
+EOF
     echo -e "${GREEN}  ✓ App created successfully${NC}"
 else
     echo -e "${GREEN}  ✓ App already exists${NC}"
