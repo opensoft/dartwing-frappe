@@ -10,8 +10,6 @@ services:
         USER_UID: ${UID:-1000}
         USER_GID: ${GID:-1000}
     container_name: dartwing-frappe
-
-    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       # Workspace
       - ../:/workspace:cached
