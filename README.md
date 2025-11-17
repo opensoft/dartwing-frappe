@@ -45,25 +45,30 @@ In VSCode:
 - Click "Reopen in Container" when prompted
 - Or use Command Palette: "Dev Containers: Reopen in Container"
 
-### 3. Develop Your Frappe App
+### 3. Automatic Setup
 
-Inside the devcontainer, you have access to the shared Frappe bench:
+The devcontainer automatically runs a setup script on each start that:
+- ✅ Configures MariaDB connection
+- ✅ Creates `dartwing.localhost` site (if not exists)
+- ✅ Creates `dartwing_frappe` app (if not exists)
+- ✅ Installs app to site (if not installed)
+
+**The script is idempotent** - safe to run multiple times, only does what's needed.
+
+### 4. Manual Setup (Optional)
+
+If you need to run the setup manually:
 
 ```bash
-cd /workspace/development/frappe-bench
-
-# Create your Dartwing app (first time only)
-bench new-app dartwing
-
-# Install the app to your site
-bench --site site1.localhost install-app dartwing
+bash /workspace/.devcontainer/setup-dartwing.sh
 ```
 
-### 4. Access the Application
+### 5. Access the Application
 
-- The site runs from the main Frappe container
-- Access at: http://localhost:8081
-- Default credentials: Administrator / admin
+- **URL**: http://localhost:8081
+- **Site**: dartwing.localhost
+- **Login**: Administrator / admin
+- **App Location**: `/workspace/development/frappe-bench/apps/dartwing_frappe`
 
 ## Development
 

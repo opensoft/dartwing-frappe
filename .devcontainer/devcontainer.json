@@ -42,5 +42,6 @@
   "remoteUser": "${localEnv:USER}",
   
   "postCreateCommand": "echo 'Dartwing Frappe development environment ready'",
+  "postStartCommand": "cp /workspace/.devcontainer/setup-dartwing.sh /workspace/development/frappe-bench/setup-dartwing.sh && chmod +x /workspace/development/frappe-bench/setup-dartwing.sh && docker exec frappe-dev bash /workspace/development/frappe-bench/setup-dartwing.sh || echo 'Setup will run when frappe-dev is available'",
   "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/development/frappe-bench'"
 }
