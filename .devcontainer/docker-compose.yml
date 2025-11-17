@@ -23,13 +23,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:rw
       
       # Shell configurations
-      - ~/.zshrc:/home/${USER:-frappe}/.zshrc:ro
-      - ~/.bashrc:/home/${USER:-frappe}/.bashrc:ro
-      - ~/.oh-my-zsh:/home/${USER:-frappe}/.oh-my-zsh:ro
-      - ~/.p10k.zsh:/home/${USER:-frappe}/.p10k.zsh:ro
+      - ~/.zshrc:/home/${USER:-vscode}/.zshrc:ro
+      - ~/.bashrc:/home/${USER:-vscode}/.bashrc:ro
+      - ~/.oh-my-zsh:/home/${USER:-vscode}/.oh-my-zsh:ro
+      - ~/.p10k.zsh:/home/${USER:-vscode}/.p10k.zsh:ro
       
       # Git configuration
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
+      - ~/.gitconfig:/home/${USER:-vscode}/.gitconfig:ro
       
       # SSH configurations and keys
       - ~/.ssh/config:/home/${USER:-vscode}/.ssh/config:ro
