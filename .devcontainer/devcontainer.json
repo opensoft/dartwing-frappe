@@ -3,7 +3,10 @@
   
   // This devcontainer connects to the existing Frappe infrastructure
   // Started from /home/brett/projects/frappe
-  "dockerComposeFile": "docker-compose.yml",
+  "dockerComposeFile": [
+    "docker-compose.yml",
+    "docker-compose.override.yml"
+  ],
   "service": "dartwing-dev",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
