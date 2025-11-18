@@ -20,12 +20,6 @@ services:
       # Mount Docker socket to enable docker commands inside container
       - /var/run/docker.sock:/var/run/docker.sock:rw
       
-      # Shell configurations
-      - ~/.zshrc:/home/${USER:-vscode}/.zshrc:ro
-      - ~/.bashrc:/home/${USER:-vscode}/.bashrc:ro
-      - ~/.oh-my-zsh:/home/${USER:-vscode}/.oh-my-zsh:ro
-      - ~/.p10k.zsh:/home/${USER:-vscode}/.p10k.zsh:ro
-      
       # Git configuration
       - ~/.gitconfig:/home/${USER:-vscode}/.gitconfig:ro
     command: sleep infinity
