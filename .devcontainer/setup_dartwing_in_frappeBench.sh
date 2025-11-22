@@ -6,11 +6,13 @@ echo "Dartwing Frappe Setup"
 echo "=========================================="
 
 # Configuration
-BENCH_PATH="/workspace/development/frappe-bench"
+BENCH_PATH="${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}"
 SITE_NAME="dartwing.localhost"
-APP_NAME="dartwing_frappe"
+APP_NAME="dartwing"
+APP_REPO_DIR="frappe-app-dartwing"
 ADMIN_PASSWORD="admin"
 DB_ROOT_PASSWORD="frappe"
+FALLBACK_SCRIPT="$BENCH_PATH/setup_new_frappe-app-dartwing.sh"
 
 # Add bench to PATH
 export PATH="$PATH:$HOME/.local/bin:$BENCH_PATH/env/bin"
@@ -48,17 +50,20 @@ fi
 
 # Step 3: Check if app exists
 echo -e "${BLUE}[3/4] Checking if app '$APP_NAME' exists...${NC}"
-if [ ! -d "apps/$APP_NAME" ]; then
-    echo -e "${YELLOW}  → Creating app '$APP_NAME'${NC}"
-    # Create app non-interactively
-    bench new-app $APP_NAME \
-        --title "Dartwing Frappe" \
-        --description "Dartwing backend API and business logic" \
-        --publisher "Dartwingers" \
-        --email "dev@dartwingers.com" \
-        --license "mit" \
-        --no-git
-    echo -e "${GREEN}  ✓ App created successfully${NC}"
+if [ ! -d "apps/$APP_REPO_DIR" ]; then
+    echo -e "${YELLOW}  → App repo missing, attempting to clone '$APP_NAME' from GitHub${NC}"
+    if bench get-app https://github.com/Opensoft/frappe-app-dartwing.git "$APP_REPO_DIR"; then
+        echo -e "${GREEN}  ✓ App cloned successfully${NC}"
+    else
+        echo -e "${YELLOW}  → Clone failed. Running local bootstrap script '${FALLBACK_SCRIPT}'${NC}"
+        if [ -x "$FALLBACK_SCRIPT" ]; then
+            "$FALLBACK_SCRIPT"
+            echo -e "${GREEN}  ✓ Local app bootstrap complete${NC}"
+        else
+            echo -e "${YELLOW}  → Fallback script not found or not executable${NC}"
+            exit 1
+        fi
+    fi
 else
     echo -e "${GREEN}  ✓ App already exists${NC}"
 fi
@@ -84,7 +89,7 @@ echo -e "${GREEN}Setup Complete!${NC}"
 echo "=========================================="
 echo "Site: http://localhost:8081"
 echo "Login: Administrator / $ADMIN_PASSWORD"
-echo "App Location: $BENCH_PATH/apps/$APP_NAME"
+echo "App Location: $BENCH_PATH/apps/$APP_REPO_DIR"
 echo ""
 echo "To start development server:"
 echo "  cd $BENCH_PATH"

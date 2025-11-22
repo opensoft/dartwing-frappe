@@ -1,134 +1,66 @@
-FROM ubuntu:22.04
+FROM frappe/bench:latest
 
 # Container version labels for runtime identification
 LABEL devcontainer.version="1.0.0"
 LABEL devcontainer.template="dartwing-frappe-devcontainer-1.0.0"
-LABEL devcontainer.description="Dartwing Frappe DevContainer Template"
-LABEL devcontainer.created="2025-01-16T00:00:00Z"
+LABEL devcontainer.description="Dartwing Frappe App Development Container"
+LABEL devcontainer.created="2025-11-16T00:00:00Z"
 
-# Prevent interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=UTC
+# Switch to root to install system packages
+USER root
 
-# Build arguments for user management
-ARG USERNAME=frappe
-ARG USER_UID=1000
-ARG USER_GID=1000
-
-# Install system-level dependencies for Frappe
-RUN apt-get update && apt-get install -y \
-    # Build essentials
-    build-essential \
-    gcc \
-    g++ \
-    make \
-    pkg-config \
-    # Python development
-    python3-dev \
-    python3-pip \
-    python3.10-venv \
-    libffi-dev \
-    libssl-dev \
-    # Image processing
-    libjpeg-dev \
-    zlib1g-dev \
-    # Database client
-    libmariadb-dev \
-    libmariadb-dev-compat \
-    mariadb-client \
-    # PDF generation
-    wkhtmltopdf \
-    xvfb \
-    libfontconfig1 \
-    # Version control
+# Install additional development tools
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
     git \
-    # Utilities
+    vim \
+    nano \
     curl \
     wget \
     jq \
     iputils-ping \
     net-tools \
-    # User management
     sudo \
-    # Shells
     zsh \
-    bash \
-    # Dev tools
-    vim \
-    nano \
-    less \
-    tree \
-    # Locales
-    locales \
-    # Docker CLI dependencies
-    ca-certificates \
-    gnupg \
-    lsb-release \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 20.x from NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Configure locales
-RUN locale-gen en_US.UTF-8 && \
-    update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
-
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
-
-# Install Yarn package manager
-RUN npm install -g yarn
-
-# Install Docker CLI (not Docker Engine, just the client)
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update && \
-    apt-get install -y docker-ce-cli && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create docker group with host GID for socket access
-RUN groupadd -g 1001 docker || true
-
-# Install Python packages for Frappe development
+# Install Python development tools
 RUN pip install --upgrade pip \
     && pip install \
-    redis \
-    mysqlclient \
-    requests \
-    click \
-    aiohttp \
-    gevent \
-    eventlet \
-    PyJWT \
     black \
     flake8 \
     isort \
     pylint \
     pytest \
-    ipython \
-    frappe-bench
+    ipython
 
 # ========================================
 # USER SETUP - Match host UID/GID
 # ========================================
 
-# Create user with matching host UID/GID (with conflict handling)
+# Build arguments for user management
+# These are passed from docker-compose.yml and match the host user
+ARG USERNAME
+ARG USER_UID
+ARG USER_GID
+
+# Remove any existing user/group with the target UID/GID and create new user
+# This ensures we match the host user exactly, replacing the default 'frappe' user
 RUN set -eux && \
+    # Remove existing user with target UID if exists
     if getent passwd "$USER_UID" >/dev/null; then \
-        userdel --force --remove $(getent passwd "$USER_UID" | cut -d: -f1) || true; \
+        existing_user=$(getent passwd "$USER_UID" | cut -d: -f1) && \
+        userdel --force --remove $existing_user 2>/dev/null || true; \
     fi && \
+    # Remove existing group with target GID if exists
     if getent group "$USER_GID" >/dev/null; then \
-        groupdel $(getent group "$USER_GID" | cut -d: -f1) || true; \
+        existing_group=$(getent group "$USER_GID" | cut -d: -f1) && \
+        [ "$existing_group" != "sudo" ] && groupdel $existing_group 2>/dev/null || true; \
     fi && \
+    # Create new group and user matching host
     groupadd --gid $USER_GID $USERNAME && \
     useradd --uid $USER_UID --gid $USER_GID -m -s /bin/zsh $USERNAME && \
-    usermod -aG docker $USERNAME && \
     echo $USERNAME ALL=\(ALL\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
@@ -154,16 +86,12 @@ RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \
 USER root
 RUN chsh -s /bin/zsh $USERNAME
 
-# Create workspace directory with proper ownership as root
+# Create workspace directories with proper ownership
 RUN mkdir -p /workspace/development && \
-    chown -R $USER_UID:$USER_GID /workspace
+    chown -R $USERNAME:$USERNAME /workspace
 
 # Switch back to user
 USER $USERNAME
-
-# Create .ssh directory with proper permissions
-RUN mkdir -p ~/.ssh && \
-    chmod 700 ~/.ssh
 
 # Set working directory
 WORKDIR /workspace
