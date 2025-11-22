@@ -1,18 +1,15 @@
 {
-  "name": "Dartwing Frappe App Development",
-  
+  "name": "Dartwing Frappe App",
+
   // This devcontainer connects to the existing Frappe infrastructure
   // Started from /home/brett/projects/frappe
-  "dockerComposeFile": [
-    "docker-compose.yml",
-    "docker-compose.override.yml"
-  ],
+  "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "dartwing-dev",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  
+
   "initializeCommand": "docker network inspect frappe-network >/dev/null 2>&1 || echo 'Warning: frappe-network not found! Start the main Frappe devcontainer first.' && docker rm -f dartwing-frappe 2>/dev/null || true",
-  
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -25,14 +22,11 @@
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
-        "continue.continue",
         "ms-azuretools.vscode-docker",
         "bradlc.vscode-tailwindcss",
-        "esbenp.prettier-vscode",
         "eamodio.gitlens",
-        "k--kato.docomment",
+        "codeviz.codeviz",
         // AI assistance extensions
-        "sourcegraph.cody-ai",
         "anthropic.claude-dev",
         "anthropic.claude-code",
         "openai.chatgpt",
@@ -55,10 +49,10 @@
       }
     }
   },
-  
+
   "remoteUser": "${localEnv:USER}",
-  
+
   "postCreateCommand": "echo 'Dartwing Frappe development environment ready'",
-  "postStartCommand": "cp /workspace/.devcontainer/setup-dartwing.sh /workspace/development/frappe-bench/setup-dartwing.sh && chmod +x /workspace/development/frappe-bench/setup-dartwing.sh && docker exec frappe-dev bash /workspace/development/frappe-bench/setup-dartwing.sh || echo 'Setup will run when frappe-dev is available'",
+  "postStartCommand": "bash /workspace/.devcontainer/setup_dartwing_in_frappeBench.sh || echo 'Setup will run when bench is available'",
   "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/development/frappe-bench'"
 }

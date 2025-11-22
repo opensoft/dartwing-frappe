@@ -14,12 +14,15 @@ services:
       # Workspace
       - ../:/workspace:cached
 
-      # Mount the Frappe bench from the main frappe project on host
-      - /home/brett/projects/frappe/development/frappe-bench:/workspace/development/frappe-bench:rw
+      # Mount only the Dartwing app directory from the shared bench
+      #- ${FRAPPE_DARTWING_APP_PATH:-../development/frappe-bench/apps/dartwing_frappe}:/workspace/development/frappe-bench/apps/frappe-app-dartwing:rw
+
+      # Provide a flat /workspace/src mount directly to the Dartwing package
+      - ${FRAPPE_DARTWING_APP_SRC_PATH:-../development/frappe-bench/apps/dartwing}:/workspace/src:rw
 
       # Mount Docker socket to enable docker commands inside container
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      
+
       # Git configuration
       - ~/.gitconfig:/home/${USER:-vscode}/.gitconfig:ro
     command: sleep infinity
