@@ -1,0 +1,39 @@
+# Compose project name for Docker Desktop grouping
+name: ${COMPOSE_PROJECT_NAME:-dartwing}
+services:
+  ${CODENAME:-dartwing}-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: ${USER:-vscode}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${CONTAINER_NAME:-dartwing-frappe}
+    ports:
+      - "${HOST_PORT:-8081}:8000"
+    volumes:
+      # Workspace
+      - ../:/workspace:cached
+
+      # Mount Docker socket to enable docker commands inside container
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+
+      # Git configuration
+      - ~/.gitconfig:/home/${USER:-vscode}/.gitconfig:ro
+    command: sleep infinity
+    networks:
+      - frappe-network
+    environment:
+      # Connect to existing Frappe infrastructure services
+      - DB_HOST=frappe-mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=frappe-redis-cache:6379
+      - REDIS_QUEUE=frappe-redis-queue:6379
+      - REDIS_SOCKETIO=frappe-redis-socketio:6379
+
+networks:
+  # Reference the external network created by the main frappe devcontainer
+  frappe-network:
+    name: frappe-network
+    external: true
