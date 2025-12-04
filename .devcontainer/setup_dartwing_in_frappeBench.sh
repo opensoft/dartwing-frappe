@@ -5,13 +5,19 @@ echo "=========================================="
 echo "Dartwing Frappe Setup"
 echo "=========================================="
 
+# Load .env file if it exists
+if [ -f "/workspace/.devcontainer/.env" ]; then
+    export $(grep -v '^#' /workspace/.devcontainer/.env | xargs)
+fi
+
 # Configuration
-BENCH_PATH="${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}"
-SITE_NAME="dartwing.localhost"
+BENCH_PATH="${FRAPPE_BENCH_PATH:-/workspace/frappe-bench}"
+SITE_NAME="${SITE_NAME:-dartwing.localhost}"
 APP_NAME="dartwing"
 APP_REPO_DIR="frappe-app-dartwing"
-ADMIN_PASSWORD="admin"
-DB_ROOT_PASSWORD="frappe"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
+DB_ROOT_PASSWORD="${DB_PASSWORD:-frappe}"
+DB_NAME="${DB_NAME:-dartwing}"
 FALLBACK_SCRIPT="$BENCH_PATH/setup_new_frappe-app-dartwing.sh"
 
 # Add bench to PATH
@@ -28,9 +34,10 @@ cd $BENCH_PATH
 
 # Step 1: Check and configure MariaDB host
 echo -e "${BLUE}[1/4] Checking MariaDB configuration...${NC}"
+DB_HOST_CONFIG="${DB_HOST:-frappe-mariadb}"
 if ! grep -q "db_host" sites/common_site_config.json 2>/dev/null; then
-    echo -e "${YELLOW}  → Setting MariaDB host to frappe-mariadb${NC}"
-    bench set-mariadb-host frappe-mariadb
+    echo -e "${YELLOW}  → Setting MariaDB host to ${DB_HOST_CONFIG}${NC}"
+    bench set-mariadb-host "$DB_HOST_CONFIG"
 else
     echo -e "${GREEN}  ✓ MariaDB host already configured${NC}"
 fi
@@ -39,10 +46,18 @@ fi
 echo -e "${BLUE}[2/4] Checking if site '$SITE_NAME' exists...${NC}"
 if [ ! -d "sites/$SITE_NAME" ]; then
     echo -e "${YELLOW}  → Creating site '$SITE_NAME'${NC}"
-    bench new-site $SITE_NAME \
-        --admin-password $ADMIN_PASSWORD \
-        --db-root-password $DB_ROOT_PASSWORD \
-        --no-mariadb-socket
+    if [ -n "$DB_NAME" ] && [ "$DB_NAME" != "dartwing" ]; then
+        bench new-site $SITE_NAME \
+            --db-name $DB_NAME \
+            --admin-password $ADMIN_PASSWORD \
+            --db-root-password $DB_ROOT_PASSWORD \
+            --no-mariadb-socket
+    else
+        bench new-site $SITE_NAME \
+            --admin-password $ADMIN_PASSWORD \
+            --db-root-password $DB_ROOT_PASSWORD \
+            --no-mariadb-socket
+    fi
     echo -e "${GREEN}  ✓ Site created successfully${NC}"
 else
     echo -e "${GREEN}  ✓ Site already exists${NC}"

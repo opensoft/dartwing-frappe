@@ -25,6 +25,12 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js (LTS version)
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python development tools
 RUN pip install --upgrade pip \
     && pip install \
@@ -34,6 +40,9 @@ RUN pip install --upgrade pip \
     pylint \
     pytest \
     ipython
+
+# Install uv (fast Python package installer)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # ========================================
 # USER SETUP - Match host UID/GID
@@ -69,9 +78,15 @@ USER $USERNAME
 RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh -s -- --unattended || \
     echo "Oh My Zsh installation failed, using default zsh"
 
-# Add bench to PATH
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+# Add bench and uv tools to PATH
+RUN echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+
+# Install spec-kit
+RUN /root/.cargo/bin/uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+
+# Install OpenSpec
+RUN npm install -g @fission-ai/openspec@latest
 
 # Override bash profile to run zsh instead of bash
 RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \

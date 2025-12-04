@@ -1,7 +1,7 @@
 # Compose project name for Docker Desktop grouping
 name: ${COMPOSE_PROJECT_NAME:-dartwing}
 services:
-  dartwing-dev:
+  ${CODENAME:-dartwing}-dev:
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,16 +9,12 @@ services:
         USERNAME: ${USER:-vscode}
         USER_UID: ${UID:-1000}
         USER_GID: ${GID:-1000}
-    container_name: dartwing-frappe
+    container_name: ${CONTAINER_NAME:-dartwing-frappe}
+    ports:
+      - "${HOST_PORT:-8081}:8000"
     volumes:
       # Workspace
       - ../:/workspace:cached
-
-      # Mount only the Dartwing app directory from the shared bench
-      #- ${FRAPPE_DARTWING_APP_PATH:-../development/frappe-bench/apps/dartwing_frappe}:/workspace/development/frappe-bench/apps/frappe-app-dartwing:rw
-
-      # Provide a flat /workspace/src mount directly to the Dartwing package
-      - ${FRAPPE_DARTWING_APP_SRC_PATH:-../development/frappe-bench/apps/dartwing}:/workspace/src:rw
 
       # Mount Docker socket to enable docker commands inside container
       - /var/run/docker.sock:/var/run/docker.sock:rw
