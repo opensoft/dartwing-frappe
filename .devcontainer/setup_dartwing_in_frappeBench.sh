@@ -11,7 +11,7 @@ if [ -f "/workspace/.devcontainer/.env" ]; then
 fi
 
 # Configuration
-BENCH_PATH="${FRAPPE_BENCH_PATH:-/workspace/frappe-bench}"
+BENCH_PATH="${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}"
 SITE_NAME="${SITE_NAME:-dartwing.localhost}"
 APP_NAME="dartwing"
 APP_REPO_DIR="frappe-app-dartwing"
