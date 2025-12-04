@@ -1,0 +1,29 @@
+# Docker Compose Override File Example
+# Copy this file to docker-compose.override.yml and customize for your environment
+# This file is automatically loaded by Docker Compose and merged with docker-compose.yml
+
+services:
+  dartwing-dev:
+    volumes:
+      # SSH configurations and keys for git operations inside the container
+      # Uncomment and customize the SSH key paths you need:
+      
+      # SSH config file
+      # - ~/.ssh/config:/home/${USER:-vscode}/.ssh/config:ro
+      
+      # Ed25519 key (recommended modern key type)
+      # - ~/.ssh/id_ed25519:/home/${USER:-vscode}/.ssh/id_ed25519:ro
+      # - ~/.ssh/id_ed25519.pub:/home/${USER:-vscode}/.ssh/id_ed25519.pub:ro
+      
+      # RSA keys (if you use them)
+      # - ~/.ssh/id_rsa:/home/${USER:-vscode}/.ssh/id_rsa:ro
+      # - ~/.ssh/id_rsa.pub:/home/${USER:-vscode}/.ssh/id_rsa.pub:ro
+      
+      # Azure DevOps specific keys (if needed)
+      # - ~/.ssh/id_rsa_ado:/home/${USER:-vscode}/.ssh/id_rsa_ado:ro
+      # - ~/.ssh/id_rsa_ado.pub:/home/${USER:-vscode}/.ssh/id_rsa_ado.pub:ro
+      
+      # Known hosts file
+      # - ~/.ssh/known_hosts:/home/${USER:-vscode}/.ssh/known_hosts:ro
+      
+      # Add any other custom mounts you need here

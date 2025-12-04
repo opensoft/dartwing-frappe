@@ -37,16 +37,18 @@ This setup uses two separate GitHub repositories:
 │   │   ├── docker-compose.yml
 │   │   ├── Dockerfile
 │   │   └── .env                        # Configured for alpha
-│   └── frappe-bench/
-│       └── apps/
-│           └── frappe-app-dartwing/    # CLONE (can be on any branch)
+│   └── development/
+│       └── frappe-bench/
+│           └── apps/
+│               └── frappe-app-dartwing/    # CLONE (can be on any branch)
 ├── frappe-bravo/                       # Instance 2 (CLONE of dartwing-frappe)
 │   ├── .devcontainer/
 │   │   ├── .env                        # Configured for bravo
 │   │   └── ...
-│   └── frappe-bench/
-│       └── apps/
-│           └── frappe-app-dartwing/    # CLONE (different branch)
+│   └── development/
+│       └── frappe-bench/
+│           └── apps/
+│               └── frappe-app-dartwing/    # CLONE (different branch)
 └── frappe-charlie/                     # Instance 3, etc.
 ```
 
@@ -68,13 +70,13 @@ docker compose up -d mariadb redis-cache redis-queue redis-socketio
 Each frappe-<codename> folder will have:
 
 ### 1. Isolated Bench
-- Location: `frappe-<codename>/frappe-bench/`
+- Location: `frappe-<codename>/development/frappe-bench/`
 - Initialized with `bench init` pointing to shared MariaDB/Redis
 - Separate `sites/` directory for that branch's sites
-- Separate Python virtualenv at `frappe-bench/env/`
+- Separate Python virtualenv at `development/frappe-bench/env/`
 
 ### 2. Cloned frappe-app-dartwing Repository
-- Location: `frappe-<codename>/frappe-bench/apps/frappe-app-dartwing/`
+- Location: `frappe-<codename>/development/frappe-bench/apps/frappe-app-dartwing/`
 - Cloned via: `git clone git@github.com:opensoft/frappe-app-dartwing.git`
 - Can checkout any branch independently
 - Each instance has its own complete git repository
@@ -95,7 +97,7 @@ Each instance uses same `docker-compose.yml` but with different service name (vi
 - Service name: `bench-<codename>` (templated via .env)
 - Container name: `frappe-<codename>` (from .env: CONTAINER_NAME)
 - Connects to external `frappe-network`
-- Mounts its own `frappe-bench/` directory
+- Mounts its own `development/frappe-bench/` directory
 - Environment variables point to shared infra (DB_HOST=frappe-mariadb, etc.)
 - Unique port mapping (from .env: HOST_PORT)
 
@@ -106,7 +108,7 @@ Each `frappe-<codename>/.devcontainer/devcontainer.json`:
   "name": "Frappe Alpha",
   "dockerComposeFile": "docker-compose.yml",
   "service": "bench-alpha",
-  "workspaceFolder": "/workspace/frappe-bench/apps/frappe-app-dartwing",
+  "workspaceFolder": "/workspace/development/frappe-bench/apps/frappe-app-dartwing",
   "shutdownAction": "stopCompose"
 }
 ```
@@ -125,13 +127,13 @@ cd /home/brett/projects/dartwingers/dartwing/dartwing-frappe
 cd /home/brett/projects/dartwingers/dartwing/frappe-alpha
 code .
 # VS Code → Reopen in Container
-# Works on: /workspace/frappe-bench/apps/frappe-app-dartwing
+# Works on: /workspace/development/frappe-bench/apps/frappe-app-dartwing
 ```
 
 ### Starting Development
 ```bash
 # Inside devcontainer terminal
-cd /workspace/frappe-bench
+cd /workspace/development/frappe-bench
 bench start
 # Site available at: http://localhost:8001
 ```
@@ -195,7 +197,7 @@ The `new-dartwing-container.sh` script handles all setup automatically.
 6. **Update devcontainer.json**
    - Set name to `Frappe <Codename>`
    - Set service to `bench-<codename>`
-   - Set workspaceFolder to `/workspace/frappe-bench/apps/frappe-app-dartwing`
+   - Set workspaceFolder to `/workspace/development/frappe-bench/apps/frappe-app-dartwing`
 
 7. **Initialize Bench (inside temporary container or on host)**
    - Create `frappe-<codename>/frappe-bench/` directory

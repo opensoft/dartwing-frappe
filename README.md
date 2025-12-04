@@ -1,181 +1,142 @@
-# dartwing-frappe
+# Dartwing Frappe App
 
-Frappe framework integration layer for Dartwing with ERPNext accounting module proxy.
+Development workspace for the Dartwing Frappe application. This devcontainer attaches to the existing Frappe infrastructure started from `/home/brett/projects/frappe` and shares the same Frappe bench.
 
-## Overview
+## Prerequisites
 
-`dartwing-frappe` is a custom application layer built on top of the Frappe framework. It provides:
-
-- **Custom business logic** using Frappe's powerful framework
-- **ERPNext accounting integration** via a proxy/connector pattern
-- **Clean architectural separation** between custom code and third-party services
-- **Apache 2.0 licensing** for the application while respecting dependencies
+- Docker and Docker Compose
+- VSCode with Dev Containers extension
+- **The main Frappe devcontainer must be running** (from `/home/brett/projects/frappe`)
 
 ## Architecture
 
-This application follows a service-oriented architecture:
+This workspace:
+- **Connects** to the existing `frappe_frappe-network` Docker network
+- **Shares** the `frappe-bench-data-frappe` volume with the main Frappe container
+- **Uses** the existing Frappe infrastructure (MariaDB, Redis services)
+- **Mounts** this project folder at `/workspace` in the container
 
-```
-┌─────────────────────────────────────────┐
-│   dartwing-frappe Application           │
-│   (Apache 2.0 Licensed)                 │
-├─────────────────────────────────────────┤
-│  Custom Features & Business Logic       │
-│  Frappe Integration Layer               │
-│  ERPNext Proxy/Connector                │
-└────────────┬────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────┐
-│  Frappe Framework (MIT Licensed)        │
-│  - Core application framework           │
-│  - Database models                      │
-│  - User interface & API                 │
-└────────────┬────────────────────────────┘
-             │
-             ▼ (HTTP/RPC Calls)
-┌─────────────────────────────────────────┐
-│  ERPNext Service (GPL-3.0 Licensed)     │
-│  - Accounting Module                    │
-│  - Financial Reports                    │
-│  - Separate Deployment                  │
-└─────────────────────────────────────────┘
-```
+### Shared Infrastructure
 
-### Key Architectural Principles
-
-1. **No ERPNext Code Embedding**: This application does not include, modify, or redistribute ERPNext source code
-2. **API-Based Integration**: Communication with ERPNext happens exclusively via HTTP/RPC API calls
-3. **Service Separation**: ERPNext runs as an independent service with its own GPL-3.0 deployment
-4. **Proxy Pattern**: The application acts as a proxy/connector forwarding accounting requests to ERPNext
-
-## License
-
-This application is licensed under the **Apache License 2.0**.
-
-### Dependency Licensing
-
-This project depends on and integrates with:
-
-- **Frappe Framework**: MIT License
-  - Used as a library for application development
-  - Custom applications built on Frappe are not restricted by the MIT license
-
-- **ERPNext**: GNU General Public License v3.0 (GPL-3.0)
-  - Runs as a separate service
-  - This application does NOT include or modify ERPNext code
-  - Communication is via REST API/RPC only
-  - See [DEPENDENCIES.md](./DEPENDENCIES.md) for detailed licensing information
-
-For more details, see the [LICENSE](./LICENSE) file and [DEPENDENCIES.md](./DEPENDENCIES.md).
+- **Database**: `frappe-mariadb` (shared)
+- **Redis Cache**: `frappe-redis-cache` (shared)
+- **Redis Queue**: `frappe-redis-queue` (shared)
+- **Redis SocketIO**: `frappe-redis-socketio` (shared)
+- **Frappe Bench**: `/workspace/development/frappe-bench` (shared volume)
 
 ## Getting Started
 
-### Prerequisites
+### 1. Start the Main Frappe Environment
 
-- Frappe Framework installed and running
-- ERPNext service available and configured (for accounting features)
-- Python 3.8+
-- Docker (optional, for containerized deployment)
+First, ensure the main Frappe devcontainer is running:
+```bash
+cd /home/brett/projects/frappe
+# Open in VSCode and start devcontainer
+```
 
-### Installation
+### 2. Open Dartwing Workspace
 
 ```bash
-# Clone the repository
-git clone https://github.com/opensoft/dartwing-frappe.git
-cd dartwing-frappe
-
-# Install dependencies
-bench install-app dartwing-frappe
-
-# Run migrations
-bench migrate
+cd /home/brett/projects/dartwingers/dartwing/dartwing-frappe
 ```
 
-### Configuration
+In VSCode:
+- Open this folder
+- Click "Reopen in Container" when prompted
+- Or use Command Palette: "Dev Containers: Reopen in Container"
 
-Configure ERPNext connection in your Frappe site configuration:
+### 3. Automatic Setup
 
-```python
-# site_config.json
-{
-  "erpnext_url": "http://erpnext-service:8000",
-  "erpnext_api_key": "your-api-key",
-  "erpnext_api_secret": "your-api-secret"
-}
+The devcontainer automatically runs a setup script on each start that:
+- ✅ Configures MariaDB connection
+- ✅ Creates `dartwing.localhost` site (if not exists)
+- ✅ Creates `dartwing_frappe` app (if not exists)
+- ✅ Installs app to site (if not installed)
+
+**The script is idempotent** - safe to run multiple times, only does what's needed.
+
+### 4. Manual Setup (Optional)
+
+If you need to run the setup manually:
+
+```bash
+bash /workspace/.devcontainer/setup-dartwing.sh
 ```
 
-## Usage
+### 5. Access the Application
 
-### Accounting Module Access
-
-When users access accounting features through this application:
-
-1. The application receives the request
-2. The ERPNext Proxy validates and transforms the request
-3. The request is forwarded to the ERPNext service via API
-4. ERPNext processes the accounting logic
-5. Results are returned to the user through this application
-
-### Example: Creating an Invoice
-
-```python
-# In your custom Frappe app
-from dartwing_frappe.connectors.erpnext_proxy import ERPNextProxy
-
-proxy = ERPNextProxy()
-invoice_data = {
-    'customer': 'CUST-001',
-    'items': [...],
-    'due_date': '2025-12-31'
-}
-
-result = proxy.create_invoice(invoice_data)
-```
+- **URL**: http://localhost:8081
+- **Site**: dartwing.localhost
+- **Login**: Administrator / admin
+- **App Location**: `/workspace/development/frappe-bench/apps/dartwing_frappe`
 
 ## Development
 
-### Structure
+### Project Structure
 
 ```
-dartwing-frappe/
-├── dartwing_frappe/
-│   ├── __init__.py
-│   ├── hooks.py
-│   ├── connectors/
-│   │   ├── erpnext_proxy.py      # ERPNext integration
-│   │   └── frappe_helpers.py     # Frappe utilities
-│   ├── doctype/
-│   │   └── [...custom doctypes]
-│   └── api.py                    # REST endpoints
-├── tests/
-├── LICENSE                        # Apache 2.0
-└── README.md
+/workspace/                          # This project (dartwing-frappe)
+/workspace/development/frappe-bench/ # Shared Frappe bench (volume)
 ```
 
-### Contributing
+### Useful Bench Commands
 
-Contributions are welcome! Please ensure:
+```bash
+cd /workspace/development/frappe-bench
 
-- Code follows the Apache 2.0 license terms
-- ERPNext integration remains as a pure proxy (no code modifications)
-- Tests are included for new features
+# Create a new app (if not already created)
+bench new-app dartwing
 
-## Support
+# Install app to site
+bench --site site1.localhost install-app dartwing
 
-For issues and questions:
+# Run migrations
+bench --site site1.localhost migrate
 
-- GitHub Issues: https://github.com/opensoft/dartwing-frappe/issues
-- Documentation: Check [DEPENDENCIES.md](./DEPENDENCIES.md) for licensing details
+# Clear cache
+bench clear-cache
 
-## License Summary
+# Access MariaDB
+bench --site site1.localhost mariadb
 
-| Component | License | Notes |
-|-----------|---------|-------|
-| dartwing-frappe | Apache 2.0 | This application |
-| Frappe Framework | MIT | Used as library |
-| ERPNext | GPL-3.0 | Separate service, API integration only |
+# Watch for changes (if bench is not running in main container)
+bench watch
+```
 
----
+### AI Tools Included
+- **Claude Code**: Anthropic's AI assistant
+- **Cody**: Sourcegraph's AI coding assistant  
+- **Continue**: Open-source AI code assistant
 
-**Note**: For a detailed explanation of the licensing architecture and how ERPNext integration works, please see [DEPENDENCIES.md](./DEPENDENCIES.md).
+### Python Tools
+- Black (formatter)
+- isort (import organizer)
+- flake8 (linter)
+- pytest (testing)
+- ipython (interactive shell)
+
+## Configuration
+
+- `.devcontainer/.env`: Environment variables (already configured for shared infrastructure)
+- `.devcontainer/devcontainer.json`: VSCode devcontainer config
+- `.devcontainer/docker-compose.yml`: Lightweight container that connects to existing network
+- `.devcontainer/Dockerfile`: Development container image with tools
+
+## Important Notes
+
+- **Always start the main Frappe devcontainer first** (from `/home/brett/projects/frappe`)
+- This container shares the Frappe bench volume - changes are visible in both containers
+- User permissions match your host user (`brett`)
+- The main container runs `bench start` - this container is for development only
+- Both containers can access the same database and Redis instances
+
+## Troubleshooting
+
+### Container won't start
+- Ensure the main Frappe devcontainer is running
+- Check that `frappe_frappe-network` exists: `docker network ls | grep frappe`
+- Check that volume exists: `docker volume ls | grep frappe-bench-data`
+
+### Can't connect to database
+- Verify `frappe-mariadb` container is running: `docker ps | grep mariadb`
+- Check network connectivity from inside container: `ping frappe-mariadb`
