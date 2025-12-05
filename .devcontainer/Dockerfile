@@ -9,6 +9,11 @@ LABEL devcontainer.created="2025-11-16T00:00:00Z"
 # Switch to root to install system packages
 USER root
 
+
+# ========================================
+# TOOLING SETUP - Various dev tools
+# ========================================
+
 # Install additional development tools
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
@@ -41,9 +46,27 @@ RUN pip install --upgrade pip \
     pytest \
     ipython
 
+
+# ========================================
+# BENCH SETUP - only verify
+# ========================================
+
+# 1. Switch to the correct user immediately
+USER frappe
+
+# 2. Set the working directory to where bench expects to be
+WORKDIR /home/frappe/bench
+
+# Verify everything is there (optional, but good for peace of mind)
+RUN bench --version && python3 --version && pip --version
+
+
 # ========================================
 # USER SETUP - Match host UID/GID
 # ========================================
+
+# Switch back to root for user management
+USER root
 
 # Build arguments for user management
 # These are passed from docker-compose.yml and match the host user
@@ -56,28 +79,27 @@ ARG USER_GID
 RUN set -eux && \
     # Remove existing user with target UID if exists
     if getent passwd "$USER_UID" >/dev/null; then \
-        existing_user=$(getent passwd "$USER_UID" | cut -d: -f1) && \
-        userdel --force --remove $existing_user 2>/dev/null || true; \
+    existing_user=$(getent passwd "$USER_UID" | cut -d: -f1) && \
+    userdel --force --remove $existing_user 2>/dev/null || true; \
     fi && \
-    # Remove existing group with target GID if exists
+    # Handle existing group with target GID
     if getent group "$USER_GID" >/dev/null; then \
-        existing_group=$(getent group "$USER_GID" | cut -d: -f1) && \
-        [ "$existing_group" != "sudo" ] && groupdel $existing_group 2>/dev/null || true; \
+    existing_group=$(getent group "$USER_GID" | cut -d: -f1) && \
+    groupmod -n $USERNAME $existing_group 2>/dev/null || true; \
+    else \
+    groupadd --gid $USER_GID $USERNAME 2>/dev/null || true; \
     fi && \
-    # Create new group and user matching host
-    groupadd --gid $USER_GID $USERNAME && \
-    useradd --uid $USER_UID --gid $USER_GID -m -s /bin/zsh $USERNAME && \
+    # Create new user if it doesn't exist
+    if ! getent passwd "$USERNAME" >/dev/null; then \
+    useradd --uid $USER_UID --gid $USERNAME -m -s /bin/zsh $USERNAME 2>/dev/null || true; \
+    fi && \
     echo $USERNAME ALL=\(ALL\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
-# Install Oh My Zsh for better developer experience
-USER $USERNAME
-RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh -s -- --unattended || \
-    echo "Oh My Zsh installation failed, using default zsh"
 
-# Add bench and uv tools to PATH
-RUN echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+# ========================================
+# AI SETUP - Spec-Kit and OpenSpec
+# ========================================
 
 # Install uv (fast Python package installer) as user
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -85,14 +107,32 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install spec-kit using uv (installed to ~/.local/bin)
 RUN $HOME/.local/bin/uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
 
+# Install OpenSpec to user-local npm directory
+RUN npm install -g @fission-ai/openspec@latest
+
+
+# ========================================
+# USER SETUP - Install and config zsh
+# ========================================
+
+# Add bench and uv tools to PATH
+RUN echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+
+# Install Oh My Zsh for better developer experience
+USER $USERNAME
+RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh -s -- --unattended || \
+    echo "Oh My Zsh installation failed, using default zsh"
+
+# Install Oh My Zsh plugins
+RUN git clone https://github.com/zsh-users/zsh-autosuggestions ~/.oh-my-zsh/plugins/zsh-autosuggestions && \
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.oh-my-zsh/plugins/zsh-syntax-highlighting
+
 # Configure npm to use user-local directory for global installs
 RUN mkdir -p $HOME/.npm-global && \
     npm config set prefix $HOME/.npm-global && \
     echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc && \
     echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
-
-# Install OpenSpec to user-local npm directory
-RUN npm install -g @fission-ai/openspec@latest
 
 # Override bash profile to run zsh instead of bash
 RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \
