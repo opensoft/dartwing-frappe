@@ -125,6 +125,14 @@ cd /workspace/development/frappe-bench
 bench --site site1.localhost mariadb
 ```
 
+## Multi-Branch Development
+
+For working on multiple branches simultaneously, see:
+- [Multi-Branch Setup Documentation](.warp/multi-branch-setup.md)
+- Script: `scripts/new-multibranch.sh`
+
+This allows you to run multiple isolated instances (alpha, bravo, charlie, etc.) each with different branches of the app.
+
 ## Git Repository
 
 This folder is its own git repository for the Dartwing app, separate from the main dartwing repo.

@@ -41,9 +41,6 @@ RUN pip install --upgrade pip \
     pytest \
     ipython
 
-# Install uv (fast Python package installer)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # ========================================
 # USER SETUP - Match host UID/GID
 # ========================================
@@ -82,10 +79,19 @@ RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/in
 RUN echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && \
     echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
 
-# Install spec-kit
-RUN /root/.cargo/bin/uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+# Install uv (fast Python package installer) as user
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install OpenSpec
+# Install spec-kit using uv (installed to ~/.local/bin)
+RUN $HOME/.local/bin/uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+
+# Configure npm to use user-local directory for global installs
+RUN mkdir -p $HOME/.npm-global && \
+    npm config set prefix $HOME/.npm-global && \
+    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
+
+# Install OpenSpec to user-local npm directory
 RUN npm install -g @fission-ai/openspec@latest
 
 # Override bash profile to run zsh instead of bash

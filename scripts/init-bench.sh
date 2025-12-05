@@ -9,7 +9,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}=========================================="
-echo "Frappe Bench Setup - Phase 2"
+echo "Frappe Bench Initialization"
 echo "Running inside devcontainer"
 echo -e "==========================================${NC}"
 echo ""
@@ -63,15 +63,37 @@ else
 fi
 echo ""
 
-# Step 2: Install App in Bench
-echo -e "${BLUE}[2/5] Installing frappe-app-dartwing in bench...${NC}"
+# Step 2: Install Apps in Bench (from .env or default to dartwing)
+echo -e "${BLUE}[2/5] Installing apps in bench...${NC}"
 
-if ! grep -q "frappe-app-dartwing" sites/apps.txt 2>/dev/null; then
-    bench get-app ./apps/frappe-app-dartwing
-    echo -e "${GREEN}  ✓ App registered with bench${NC}"
-else
-    echo -e "${YELLOW}  → App already registered, skipping${NC}"
-fi
+# Get app list from .env or default
+APPS_TO_INSTALL="${APPS_TO_INSTALL:-dartwing}"
+
+# Split comma-separated apps
+IFS=',' read -ra APPS <<< "$APPS_TO_INSTALL"
+
+for app in "${APPS[@]}"; do
+    app=$(echo "$app" | xargs) # trim whitespace
+    
+    if [ "$app" == "dartwing" ]; then
+        # Special handling for dartwing app
+        if ! grep -q "frappe-app-dartwing" sites/apps.txt 2>/dev/null; then
+            bench get-app ./apps/frappe-app-dartwing
+            echo -e "${GREEN}  ✓ dartwing app registered with bench${NC}"
+        else
+            echo -e "${YELLOW}  → dartwing app already registered${NC}"
+        fi
+    else
+        # Generic app installation
+        if ! grep -q "$app" sites/apps.txt 2>/dev/null; then
+            echo -e "${YELLOW}  → Installing app: ${app}${NC}"
+            bench get-app "$app"
+            echo -e "${GREEN}  ✓ ${app} registered with bench${NC}"
+        else
+            echo -e "${YELLOW}  → ${app} already registered${NC}"
+        fi
+    fi
+done
 echo ""
 
 # Step 3: Create Site
@@ -91,16 +113,20 @@ else
 fi
 echo ""
 
-# Step 4: Install App on Site
-echo -e "${BLUE}[4/5] Installing app on site...${NC}"
+# Step 4: Install Apps on Site
+echo -e "${BLUE}[4/5] Installing apps on site...${NC}"
 
-# Check if app is already installed
-if ! bench --site ${SITE_NAME} list-apps 2>/dev/null | grep -q "dartwing"; then
-    bench --site ${SITE_NAME} install-app dartwing
-    echo -e "${GREEN}  ✓ App installed on site${NC}"
-else
-    echo -e "${YELLOW}  → App already installed, skipping${NC}"
-fi
+for app in "${APPS[@]}"; do
+    app=$(echo "$app" | xargs) # trim whitespace
+    
+    # Check if app is already installed
+    if ! bench --site ${SITE_NAME} list-apps 2>/dev/null | grep -q "^${app}$"; then
+        bench --site ${SITE_NAME} install-app ${app}
+        echo -e "${GREEN}  ✓ ${app} installed on site${NC}"
+    else
+        echo -e "${YELLOW}  → ${app} already installed${NC}"
+    fi
+done
 
 # Set as default site
 bench use ${SITE_NAME}
@@ -114,7 +140,7 @@ echo -e "${GREEN}  ✓ Setup complete marker created${NC}"
 echo ""
 
 echo -e "${GREEN}=========================================="
-echo "Phase 2 Setup Complete!"
+echo "Bench Initialization Complete!"
 echo -e "==========================================${NC}"
 echo ""
 echo -e "Site Details:"

@@ -1,142 +1,125 @@
-# Dartwing Frappe App
+# Dartwing Frappe Development Environment
 
-Development workspace for the Dartwing Frappe application. This devcontainer attaches to the existing Frappe infrastructure started from `/home/brett/projects/frappe` and shares the same Frappe bench.
+Development workspace for the Dartwing Frappe application with isolated bench instances for parallel development.
 
-## Prerequisites
+## Quick Start
 
+### Prerequisites
 - Docker and Docker Compose
 - VSCode with Dev Containers extension
-- **The main Frappe devcontainer must be running** (from `/home/brett/projects/frappe`)
+- Frappe infrastructure (MariaDB, Redis)
 
-## Architecture
+### Setup
 
-This workspace:
-- **Connects** to the existing `frappe_frappe-network` Docker network
-- **Shares** the `frappe-bench-data-frappe` volume with the main Frappe container
-- **Uses** the existing Frappe infrastructure (MariaDB, Redis services)
-- **Mounts** this project folder at `/workspace` in the container
+1. **Start Infrastructure**
+   ```bash
+   cd /home/brett/projects/workBenches/devBenches/frappeBench
+   docker compose up -d mariadb redis-cache redis-queue redis-socketio
+   ```
 
-### Shared Infrastructure
+2. **Clone and Setup**
+   ```bash
+   cd /home/brett/projects/dartwingers/dartwing
+   git clone git@github.com:opensoft/dartwing-frappe.git
+   cd dartwing-frappe
+   ./setup.sh
+   ```
 
-- **Database**: `frappe-mariadb` (shared)
-- **Redis Cache**: `frappe-redis-cache` (shared)
-- **Redis Queue**: `frappe-redis-queue` (shared)
-- **Redis SocketIO**: `frappe-redis-socketio` (shared)
-- **Frappe Bench**: `/workspace/development/frappe-bench` (shared volume)
+3. **Open in VSCode**
+   ```bash
+   code .
+   # Click "Reopen in Container"
+   ```
 
-## Getting Started
+4. **Start Development**
+   ```bash
+   # Inside container (after auto-setup completes)
+   cd /workspace/development/frappe-bench
+   bench start
+   ```
 
-### 1. Start the Main Frappe Environment
+5. **Access**: http://localhost:8081 (Administrator / admin)
 
-First, ensure the main Frappe devcontainer is running:
-```bash
-cd /home/brett/projects/frappe
-# Open in VSCode and start devcontainer
-```
+## Key Features
 
-### 2. Open Dartwing Workspace
+- ✅ **Isolated Benches** - Each workspace has its own Frappe bench
+- ✅ **Shared Infrastructure** - All workspaces share MariaDB and Redis
+- ✅ **Multi-Branch Support** - Create parallel workspaces for different features
+- ✅ **Auto-Setup** - `init-bench.sh` runs automatically in container
+- ✅ **Dynamic User Config** - Matches your host user automatically
 
-```bash
-cd /home/brett/projects/dartwingers/dartwing/dartwing-frappe
-```
+## Multi-Branch Workflow
 
-In VSCode:
-- Open this folder
-- Click "Reopen in Container" when prompted
-- Or use Command Palette: "Dev Containers: Reopen in Container"
-
-### 3. Automatic Setup
-
-The devcontainer automatically runs a setup script on each start that:
-- ✅ Configures MariaDB connection
-- ✅ Creates `dartwing.localhost` site (if not exists)
-- ✅ Creates `dartwing_frappe` app (if not exists)
-- ✅ Installs app to site (if not installed)
-
-**The script is idempotent** - safe to run multiple times, only does what's needed.
-
-### 4. Manual Setup (Optional)
-
-If you need to run the setup manually:
+Create additional workspaces for parallel development:
 
 ```bash
-bash /workspace/.devcontainer/setup-dartwing.sh
+./new-branch.sh alpha
+cd ../alpha-frappe
+code .  # Open in VSCode
 ```
 
-### 5. Access the Application
+Each workspace gets:
+- Independent Frappe bench
+- Own database (dartwing_alpha, dartwing_bravo, etc.)
+- Own clone of frappe-app-dartwing
+- Unique port (configure HOST_PORT in .env if running simultaneously)
 
-- **URL**: http://localhost:8081
-- **Site**: dartwing.localhost
-- **Login**: Administrator / admin
-- **App Location**: `/workspace/development/frappe-bench/apps/dartwing_frappe`
+## Scripts
 
-## Development
+- **`setup.sh`** - Initial setup (creates .env, folders, clones app)
+- **`init-bench.sh`** - Bench initialization (auto-runs in container)
+- **`new-branch.sh <name>`** - Create new workspace
 
-### Project Structure
+## Documentation
 
-```
-/workspace/                          # This project (dartwing-frappe)
-/workspace/development/frappe-bench/ # Shared Frappe bench (volume)
-```
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Complete guide with all sections:
+  - Architecture details
+  - Development workflow
+  - AI Coding Assistant setup
+  - User configuration
+  - Verification checklist
+  - Troubleshooting
 
-### Useful Bench Commands
+- **[MULTI_BRANCH_ARCHITECTURE.md](docs/MULTI_BRANCH_ARCHITECTURE.md)** - Deep dive into multi-branch design, decisions, and rationale
+
+- **[USER_CONFIGURATION.md](.devcontainer/USER_CONFIGURATION.md)** - Detailed user configuration documentation
+
+- **[VERIFICATION.md](.devcontainer/VERIFICATION.md)** - Complete verification checklist
+
+## Common Commands
 
 ```bash
+# Inside container
 cd /workspace/development/frappe-bench
 
-# Create a new app (if not already created)
-bench new-app dartwing
-
-# Install app to site
-bench --site site1.localhost install-app dartwing
-
-# Run migrations
-bench --site site1.localhost migrate
-
-# Clear cache
-bench clear-cache
-
-# Access MariaDB
-bench --site site1.localhost mariadb
-
-# Watch for changes (if bench is not running in main container)
-bench watch
+bench start                              # Start development server
+bench --site dartwing.localhost migrate  # Run migrations
+bench clear-cache                        # Clear cache
+bench --site dartwing.localhost mariadb  # Access database
 ```
-
-### AI Tools Included
-- **Claude Code**: Anthropic's AI assistant
-- **Cody**: Sourcegraph's AI coding assistant  
-- **Continue**: Open-source AI code assistant
-
-### Python Tools
-- Black (formatter)
-- isort (import organizer)
-- flake8 (linter)
-- pytest (testing)
-- ipython (interactive shell)
-
-## Configuration
-
-- `.devcontainer/.env`: Environment variables (already configured for shared infrastructure)
-- `.devcontainer/devcontainer.json`: VSCode devcontainer config
-- `.devcontainer/docker-compose.yml`: Lightweight container that connects to existing network
-- `.devcontainer/Dockerfile`: Development container image with tools
-
-## Important Notes
-
-- **Always start the main Frappe devcontainer first** (from `/home/brett/projects/frappe`)
-- This container shares the Frappe bench volume - changes are visible in both containers
-- User permissions match your host user (`brett`)
-- The main container runs `bench start` - this container is for development only
-- Both containers can access the same database and Redis instances
 
 ## Troubleshooting
 
-### Container won't start
-- Ensure the main Frappe devcontainer is running
-- Check that `frappe_frappe-network` exists: `docker network ls | grep frappe`
-- Check that volume exists: `docker volume ls | grep frappe-bench-data`
+**Container won't start?**
+```bash
+# Verify infrastructure is running
+docker ps | grep frappe
+docker network ls | grep frappe-network
+```
 
-### Can't connect to database
-- Verify `frappe-mariadb` container is running: `docker ps | grep mariadb`
-- Check network connectivity from inside container: `ping frappe-mariadb`
+**Setup issues?**
+```bash
+# Re-run setup
+./setup.sh
+
+# Or rebuild container
+# VSCode: Ctrl+Shift+P → "Dev Containers: Rebuild Container"
+```
+
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md#troubleshooting) for detailed troubleshooting.
+
+## Support
+
+1. Check [ARCHITECTURE.md](docs/ARCHITECTURE.md) for comprehensive documentation
+2. Review [Verification checklist](.devcontainer/VERIFICATION.md)
+3. See [Troubleshooting section](docs/ARCHITECTURE.md#troubleshooting)
