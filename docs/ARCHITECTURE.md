@@ -34,7 +34,7 @@ The Dartwing Frappe development environment provides isolated Frappe bench insta
 Each workspace (dartwing-frappe, alpha-frappe, bravo-frappe, etc.) maintains complete independence:
 
 **Independent Components:**
-- Frappe bench directory (`development/frappe-bench/`)
+- Frappe bench directory (`workspaces/frappe-bench/`)
 - Python virtual environment
 - Frappe sites and configurations
 - Database (separate database per workspace)
@@ -79,7 +79,7 @@ All workspaces connect to common services via `frappe-network`:
 │   │   ├── docker-compose.yml         # Container definition
 │   │   ├── Dockerfile                 # Development image
 │   │   └── ...
-│   ├── development/
+│   ├── workspaces/
 │   │   └── frappe-bench/              # Isolated Frappe bench
 │   │       ├── apps/
 │   │       │   ├── frappe/           # Frappe framework (installed by bench init)
@@ -94,18 +94,18 @@ All workspaces connect to common services via `frappe-network`:
 │   ├── scripts/
 │   ├── setup.sh                       # Initial host-side setup
 │   ├── init-bench.sh                  # Container bench initialization
-│   └── new-branch.sh                  # Create branch workspace
+│   └── new-workspace.sh                  # Create branch workspace
 │
 ├── alpha-frappe/                      # Branch workspace 1
 │   ├── .devcontainer/
 │   │   └── .env                       # Configured for alpha
-│   └── development/
+│   └── workspaces/
 │       └── frappe-bench/              # Independent bench
 │
 ├── bravo-frappe/                      # Branch workspace 2
 │   ├── .devcontainer/
 │   │   └── .env                       # Configured for bravo
-│   └── development/
+│   └── workspaces/
 │       └── frappe-bench/              # Independent bench
 │
 └── charlie-frappe/                    # Branch workspace 3
@@ -161,7 +161,7 @@ docker network ls | grep frappe-network
    
    This script:
    - Creates `.env` from `.env.example`
-   - Creates `development/frappe-bench/apps/` folder structure
+   - Creates `workspaces/frappe-bench/apps/` folder structure
    - Clones `frappe-app-dartwing` into the apps folder
 
 3. **Open in VSCode**
@@ -183,7 +183,7 @@ docker network ls | grep frappe-network
 5. **Start Development Server**
    ```bash
    # Inside container terminal
-   cd /workspace/development/frappe-bench
+   cd /workspace/workspaces/frappe-bench
    bench start
    ```
 
@@ -200,7 +200,7 @@ Create parallel development environments for different features or branches:
 
 ```bash
 cd dartwing-frappe
-./scripts/new-branch.sh alpha
+./scripts/new-workspace.sh alpha
 ```
 
 This creates `../alpha-frappe/` with:
@@ -223,13 +223,13 @@ code .
 **Multiple Features Simultaneously:**
 ```bash
 # Feature A in alpha-frappe
-./scripts/new-branch.sh alpha
+./scripts/new-workspace.sh alpha
 cd ../alpha-frappe
 # Edit .env to set HOST_PORT=8082 if running simultaneously
 code .
 
 # Feature B in bravo-frappe  
-./scripts/new-branch.sh bravo
+./scripts/new-workspace.sh bravo
 cd ../bravo-frappe
 # Edit .env to set HOST_PORT=8083
 code .
@@ -242,11 +242,11 @@ Each workspace can independently checkout different branches of frappe-app-dartw
 
 ```bash
 # In alpha-frappe container
-cd /workspace/development/frappe-bench/apps/frappe-app-dartwing
+cd /workspace/workspaces/frappe-bench/apps/frappe-app-dartwing
 git checkout feature-branch-1
 
 # In bravo-frappe container  
-cd /workspace/development/frappe-bench/apps/frappe-app-dartwing
+cd /workspace/workspaces/frappe-bench/apps/frappe-app-dartwing
 git checkout feature-branch-2
 ```
 
@@ -280,7 +280,7 @@ docker exec frappe-mariadb mysql -uroot -pfrappe -e "DROP DATABASE dartwing_alph
 │   ├── .env                          # Environment variables
 │   ├── devcontainer.json             # VSCode devcontainer config
 │   └── ...
-├── development/
+├── workspaces/
 │   └── frappe-bench/                 # Frappe bench
 │       ├── apps/
 │       │   ├── frappe/              # Frappe framework
@@ -302,7 +302,7 @@ docker exec frappe-mariadb mysql -uroot -pfrappe -e "DROP DATABASE dartwing_alph
 
 ```bash
 # Navigate to bench directory
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 
 # Start development server
 bench start
@@ -339,7 +339,7 @@ bench --site dartwing.localhost restore <backup-file>
 #### Git Commands (for your app)
 
 ```bash
-cd /workspace/development/frappe-bench/apps/frappe-app-dartwing
+cd /workspace/workspaces/frappe-bench/apps/frappe-app-dartwing
 
 # Standard git operations
 git status
@@ -363,7 +363,7 @@ Run once before opening workspace in VSCode.
 
 **What it does:**
 1. Creates `.env` from `.env.example`
-2. Creates folder structure: `development/frappe-bench/apps/`
+2. Creates folder structure: `workspaces/frappe-bench/apps/`
 3. Clones frappe-app-dartwing repository
 
 **Usage:**
@@ -400,11 +400,11 @@ Runs automatically as `postCreateCommand` when container starts.
 **Note:** This script is automatic. To re-run:
 ```bash
 # Remove marker and rebuild container
-docker exec dartwing-frappe-dev rm /workspace/development/.setup_complete
+docker exec dartwing-frappe-dev rm /workspace/workspaces/.setup_complete
 # VSCode: Ctrl+Shift+P → "Dev Containers: Rebuild Container"
 ```
 
-#### scripts/new-branch.sh (Host-side)
+#### scripts/new-workspace.sh (Host-side)
 
 Creates new branch workspace.
 
@@ -421,12 +421,12 @@ Creates new branch workspace.
 
 **Usage:**
 ```bash
-./scripts/new-branch.sh <workspace-name>
+./scripts/new-workspace.sh <workspace-name>
 
 # Examples:
-./scripts/new-branch.sh alpha
-./scripts/new-branch.sh feature-auth
-./scripts/new-branch.sh bugfix-123
+./scripts/new-workspace.sh alpha
+./scripts/new-workspace.sh feature-auth
+./scripts/new-workspace.sh bugfix-123
 ```
 
 ### Development Tools
@@ -690,7 +690,7 @@ id
 
 Check file ownership:
 ```bash
-ls -la /workspace/development/frappe-bench/
+ls -la /workspace/workspaces/frappe-bench/
 # Files should be owned by your username
 ```
 
@@ -754,7 +754,7 @@ Solution:
 ```bash
 # Rebuild container to get correct UID
 # Then fix ownership of existing files:
-docker exec dartwing-frappe-dev chown -R $(id -u):$(id -g) /workspace/development/
+docker exec dartwing-frappe-dev chown -R $(id -u):$(id -g) /workspace/workspaces/
 ```
 
 **User Not in Docker Group**
@@ -818,7 +818,7 @@ docker network inspect frappe-network
 **3. Verify Setup Scripts**
 
 ```bash
-ls -la scripts/setup.sh scripts/init-bench.sh scripts/new-branch.sh
+ls -la scripts/setup.sh scripts/init-bench.sh scripts/new-workspace.sh
 ```
 
 **Expected:** All scripts exist and are executable (-rwxr-xr-x)
@@ -886,7 +886,7 @@ docker exec dartwing-frappe-dev ping -c 1 frappe-redis-cache
 **10. Verify Bench Directory**
 
 ```bash
-docker exec dartwing-frappe-dev ls /workspace/development/frappe-bench/
+docker exec dartwing-frappe-dev ls /workspace/workspaces/frappe-bench/
 ```
 
 **Expected:** Directories: apps/, sites/, config/, env/, logs/
@@ -894,7 +894,7 @@ docker exec dartwing-frappe-dev ls /workspace/development/frappe-bench/
 **11. Test Database Connection**
 
 ```bash
-docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench && bench --site dartwing.localhost mariadb --execute 'SELECT 1;'"
+docker exec dartwing-frappe-dev bash -c "cd /workspace/workspaces/frappe-bench && bench --site dartwing.localhost mariadb --execute 'SELECT 1;'"
 ```
 
 **Expected:** Returns 1 (successful connection)
@@ -914,12 +914,12 @@ docker exec dartwing-frappe-dev id
 docker exec dartwing-frappe-dev ls /workspace/
 ```
 
-**Expected:** Project files visible (.devcontainer/, development/, scripts/, etc.)
+**Expected:** Project files visible (.devcontainer/, workspaces/, scripts/, etc.)
 
 **14. Test Bench Commands**
 
 ```bash
-docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench && bench version"
+docker exec dartwing-frappe-dev bash -c "cd /workspace/workspaces/frappe-bench && bench version"
 ```
 
 **Expected:** Frappe version information displayed
@@ -927,7 +927,7 @@ docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench 
 **15. Verify Site and Apps**
 
 ```bash
-docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench && bench --site dartwing.localhost list-apps"
+docker exec dartwing-frappe-dev bash -c "cd /workspace/workspaces/frappe-bench && bench --site dartwing.localhost list-apps"
 ```
 
 **Expected:** Lists installed apps including dartwing
@@ -935,7 +935,7 @@ docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench 
 **16. Check Setup Complete**
 
 ```bash
-docker exec dartwing-frappe-dev test -f /workspace/development/.setup_complete && echo "✓ Setup complete" || echo "✗ Setup incomplete"
+docker exec dartwing-frappe-dev test -f /workspace/workspaces/.setup_complete && echo "✓ Setup complete" || echo "✗ Setup incomplete"
 ```
 
 **Expected:** ✓ Setup complete
@@ -980,10 +980,10 @@ echo -e "\n=== Connectivity ==="
 docker exec dartwing-frappe-dev ping -c 1 frappe-mariadb | grep "1 received"
 
 echo -e "\n=== Bench ==="
-docker exec dartwing-frappe-dev ls /workspace/development/frappe-bench/sites/dartwing.localhost/ | grep "site_config.json"
+docker exec dartwing-frappe-dev ls /workspace/workspaces/frappe-bench/sites/dartwing.localhost/ | grep "site_config.json"
 
 echo -e "\n=== Setup Complete ==="
-docker exec dartwing-frappe-dev test -f /workspace/development/.setup_complete && echo "✓ Complete" || echo "✗ Incomplete"
+docker exec dartwing-frappe-dev test -f /workspace/workspaces/.setup_complete && echo "✓ Complete" || echo "✗ Incomplete"
 ```
 
 ## Troubleshooting
@@ -1054,7 +1054,7 @@ cp .devcontainer/.env.example .devcontainer/.env
 **Solution:**
 ```bash
 # Remove setup marker and rebuild
-docker exec dartwing-frappe-dev rm -f /workspace/development/.setup_complete
+docker exec dartwing-frappe-dev rm -f /workspace/workspaces/.setup_complete
 
 # Rebuild container
 # VSCode: Ctrl+Shift+P → "Dev Containers: Rebuild Container"
@@ -1113,7 +1113,7 @@ docker restart frappe-mariadb
 - Verify scripts/init-bench.sh completed successfully
 - Check setup complete marker exists:
   ```bash
-  docker exec dartwing-frappe-dev test -f /workspace/development/.setup_complete
+  docker exec dartwing-frappe-dev test -f /workspace/workspaces/.setup_complete
   ```
 
 **Database Connection Timeout**
@@ -1159,14 +1159,14 @@ sed -i 's/HOST_PORT=8081/HOST_PORT=8082/' .devcontainer/.env
 **Solution:**
 ```bash
 # Check if app was cloned
-ls -la development/frappe-bench/apps/frappe-app-dartwing
+ls -la workspaces/frappe-bench/apps/frappe-app-dartwing
 
 # If missing, clone it
-cd development/frappe-bench/apps
+cd workspaces/frappe-bench/apps
 git clone git@github.com:opensoft/frappe-app-dartwing.git
 
 # Register with bench (inside container)
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 bench get-app ./apps/frappe-app-dartwing
 ```
 
@@ -1180,7 +1180,7 @@ bench get-app ./apps/frappe-app-dartwing
 ```bash
 # Verify bench is running
 # Inside container:
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 bench status
 
 # If not running, start it:
@@ -1200,7 +1200,7 @@ docker port dartwing-frappe-dev
 ```bash
 # bench start is not running
 # Inside container:
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 bench start
 ```
 
@@ -1209,7 +1209,7 @@ bench start
 **Permission Denied**
 
 ```bash
-# Error: Permission denied: '/workspace/development/frappe-bench'
+# Error: Permission denied: '/workspace/workspaces/frappe-bench'
 ```
 
 **Solution:**
@@ -1232,7 +1232,7 @@ docker exec dartwing-frappe-dev id -u
 **Solution:**
 ```bash
 # Fix ownership (replace 1000:1000 with your UID:GID)
-docker exec dartwing-frappe-dev sudo chown -R 1000:1000 /workspace/development/
+docker exec dartwing-frappe-dev sudo chown -R 1000:1000 /workspace/workspaces/
 
 # Or rebuild container to fix user configuration
 ```
@@ -1322,7 +1322,7 @@ Complete list of variables in `.env`:
 - **APPS_TO_INSTALL** - Comma-separated list of apps (default: "dartwing")
 
 #### Bench Configuration
-- **FRAPPE_BENCH_PATH** - Path to bench in container (/workspace/development/frappe-bench)
+- **FRAPPE_BENCH_PATH** - Path to bench in container (/workspace/workspaces/frappe-bench)
 
 #### User Configuration (Auto-detected)
 - **USER** - Your username (from host environment)
@@ -1342,7 +1342,7 @@ Complete list of variables in `.env`:
 #### Script Files
 - `scripts/setup.sh` - Host-side initial setup script
 - `scripts/init-bench.sh` - Container-side bench initialization script
-- `scripts/new-branch.sh` - Branch workspace creation script
+- `scripts/new-workspace.sh` - Branch workspace creation script
 
 #### Documentation Files
 - `README.md` - Quick start guide
@@ -1352,8 +1352,8 @@ Complete list of variables in `.env`:
 - `.devcontainer/VERIFICATION.md` - Verification checklist
 
 #### Runtime Files
-- `development/.setup_complete` - Marker file indicating setup completed
-- `development/frappe-bench/` - Frappe bench directory (created by scripts/init-bench.sh)
+- `workspaces/.setup_complete` - Marker file indicating setup completed
+- `workspaces/frappe-bench/` - Frappe bench directory (created by scripts/init-bench.sh)
 
 ### Docker Compose Services
 
@@ -1445,11 +1445,11 @@ docker exec dartwing-frappe-dev nc -zv frappe-mariadb 3306
 # File system debugging
 docker exec dartwing-frappe-dev ls -la /workspace
 docker exec dartwing-frappe-dev df -h
-docker exec dartwing-frappe-dev du -sh /workspace/development/frappe-bench
+docker exec dartwing-frappe-dev du -sh /workspace/workspaces/frappe-bench
 
 # Bench debugging
-docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench && bench version"
-docker exec dartwing-frappe-dev bash -c "cd /workspace/development/frappe-bench && bench doctor"
+docker exec dartwing-frappe-dev bash -c "cd /workspace/workspaces/frappe-bench && bench version"
+docker exec dartwing-frappe-dev bash -c "cd /workspace/workspaces/frappe-bench && bench doctor"
 ```
 
 ---

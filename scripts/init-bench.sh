@@ -15,9 +15,9 @@ echo -e "==========================================${NC}"
 echo ""
 
 # Check if setup already completed
-if [ -f "/workspace/development/.setup_complete" ]; then
+if [ -f "/workspace/workspaces/.setup_complete" ]; then
     echo -e "${GREEN}Setup already completed. Skipping...${NC}"
-    echo -e "${YELLOW}To re-run setup, delete: /workspace/development/.setup_complete${NC}"
+    echo -e "${YELLOW}To re-run setup, delete: /workspace/workspaces/.setup_complete${NC}"
     exit 0
 fi
 
@@ -40,7 +40,7 @@ echo ""
 echo -e "${BLUE}[1/5] Initializing Frappe bench...${NC}"
 echo -e "${YELLOW}  → This will take several minutes...${NC}"
 
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 
 # Check if bench is already initialized
 if [ ! -f "sites/apps.txt" ]; then
@@ -135,7 +135,7 @@ echo ""
 
 # Step 5: Mark Setup Complete
 echo -e "${BLUE}[5/5] Marking setup as complete...${NC}"
-touch /workspace/development/.setup_complete
+touch /workspace/workspaces/.setup_complete
 echo -e "${GREEN}  ✓ Setup complete marker created${NC}"
 echo ""
 
@@ -150,6 +150,6 @@ echo -e "  Username: ${YELLOW}Administrator${NC}"
 echo -e "  Password: ${YELLOW}admin${NC}"
 echo ""
 echo -e "To start developing:"
-echo -e "  ${YELLOW}cd /workspace/development/frappe-bench${NC}"
+echo -e "  ${YELLOW}cd /workspace/workspaces/frappe-bench${NC}"
 echo -e "  ${YELLOW}bench start${NC}"
 echo ""

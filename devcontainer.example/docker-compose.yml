@@ -10,10 +10,12 @@ services:
         USER_UID: ${UID:-1000}
         USER_GID: ${GID:-1000}
     container_name: ${CONTAINER_NAME:-frappe-dev}
+    ports:
+      - "${HOST_PORT:-8201}:8000"
 
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
-      # Workspace (includes local development/frappe-bench)
+      # Workspace (includes local workspaces/frappe-bench)
       - ../:/workspace:cached
 
       # Mount Docker socket to enable docker commands inside container

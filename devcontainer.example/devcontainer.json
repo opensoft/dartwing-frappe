@@ -36,7 +36,7 @@
         "google.gemini-cli-vscode-ide-companion"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspace/development/frappe-bench/env/bin/python",
+        "python.defaultInterpreterPath": "/workspace/workspaces/frappe-bench/env/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": false,
         "python.linting.flake8Enabled": true,
@@ -45,16 +45,17 @@
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
         },
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.cwd": "/workspace/bench/apps/dartwing"
       }
     }
   },
 
-  "remoteUser": "${localEnv:USER}",
+  "remoteUser": "${localEnv:USER}"
 
   "updateRemoteUserUID": false,
 
   "postCreateCommand": "echo 'Dartwing Frappe development environment ready'",
   "postStartCommand": "bash /workspace/scripts/setup_dartwing_in_frappeBench.sh || echo 'Setup will run when bench is available'",
-  "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/development/frappe-bench'"
+  "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/workspaces/frappe-bench'"
 }

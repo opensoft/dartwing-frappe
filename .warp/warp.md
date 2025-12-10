@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-This is a **secondary devcontainer workspace** for Dartwing Frappe app development that:
+This is a **secondary devcontainer workspace** for Dartwing Frappe app workspace that:
 - **Attaches** to the existing Frappe infrastructure from `/home/brett/projects/frappe`
 - **Shares** the Frappe bench volume (`frappe-bench-data-frappe`)
 - **Connects** to the existing MariaDB and Redis services
-- **Provides** an isolated development environment for the Dartwing app
+- **Provides** an isolated workspace environment for the Dartwing app
 
 ## Architecture
 
@@ -55,7 +55,7 @@ cd /home/brett/projects/dartwingers/dartwing/dartwing-frappe
 
 ```bash
 # Inside the container, access shared Frappe bench
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 
 # Create Dartwing app (first time)
 bench new-app dartwing
@@ -63,7 +63,7 @@ bench new-app dartwing
 # Install to site
 bench --site site1.localhost install-app dartwing
 
-# Make changes to your app in /workspace/development/frappe-bench/apps/dartwing
+# Make changes to your app in /workspace/workspaces/frappe-bench/apps/dartwing
 ```
 
 ## Devcontainer Files
@@ -77,7 +77,7 @@ bench --site site1.localhost install-app dartwing
 
 | Aspect | Main Container | Dartwing Container |
 |--------|---------------|-------------------|
-| Purpose | Runs Frappe bench | App development |
+| Purpose | Runs Frappe bench | App workspace |
 | Services | Creates all services | Uses existing services |
 | Volumes | Creates volumes | References volumes |
 | Network | Creates network | References network |
@@ -121,17 +121,17 @@ docker volume ls | grep frappe-bench-data-frappe
 ping frappe-mariadb
 
 # Test database connection
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 bench --site site1.localhost mariadb
 ```
 
-## Multi-Branch Development
+## Multi-Branch Workspaces
 
 For working on multiple branches simultaneously, see:
 - [Multi-Branch Setup Documentation](.warp/multi-branch-setup.md)
-- Script: `scripts/new-multibranch.sh`
+- Script: `scripts/new-workspace.sh`
 
-This allows you to run multiple isolated instances (alpha, bravo, charlie, etc.) each with different branches of the app.
+This allows you to run multiple isolated workspaces (alpha, bravo, charlie, etc.) each with different branches of the app.
 
 ## Git Repository
 

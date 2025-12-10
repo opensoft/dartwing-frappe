@@ -19,7 +19,7 @@ Development workspace for the Dartwing Frappe application with isolated bench in
 
 2. **Clone and Setup**
    ```bash
-   cd /home/brett/projects/dartwingers/dartwing
+   cd /home/brett/projects/dartwing
    git clone git@github.com:opensoft/dartwing-frappe.git
    cd dartwing-frappe
    ./setup.sh
@@ -34,7 +34,7 @@ Development workspace for the Dartwing Frappe application with isolated bench in
 4. **Start Development**
    ```bash
    # Inside container (after auto-setup completes)
-   cd /workspace/development/frappe-bench
+   cd /workspace/workspaces/frappe-bench
    bench start
    ```
 
@@ -48,27 +48,38 @@ Development workspace for the Dartwing Frappe application with isolated bench in
 - ✅ **Auto-Setup** - `init-bench.sh` runs automatically in container
 - ✅ **Dynamic User Config** - Matches your host user automatically
 
-## Multi-Branch Workflow
+## Multi-Workspace Development
 
 Create additional workspaces for parallel development:
 
 ```bash
-./new-branch.sh alpha
-cd ../alpha-frappe
-code .  # Open in VSCode
+./scripts/new-workspace.sh alpha
+./scripts/new-workspace.sh bravo
+```
+
+Workspaces are created under `workspaces/` directory:
+```
+workspaces/
+├── frappe-bench/           # Default workspace
+├── alpha/
+│   ├── .env               # Workspace config
+│   └── frappe-bench/      # Independent bench
+└── bravo/
+    ├── .env
+    └── frappe-bench/
 ```
 
 Each workspace gets:
-- Independent Frappe bench
+- Independent Frappe bench under `workspaces/<name>/frappe-bench/`
 - Own database (dartwing_alpha, dartwing_bravo, etc.)
 - Own clone of frappe-app-dartwing
-- Unique port (configure HOST_PORT in .env if running simultaneously)
+- Workspace-specific configuration in `.env` file
 
 ## Scripts
 
 - **`setup.sh`** - Initial setup (creates .env, folders, clones app)
 - **`init-bench.sh`** - Bench initialization (auto-runs in container)
-- **`new-branch.sh <name>`** - Create new workspace
+- **`new-workspace.sh <name>`** - Create new workspace
 
 ## Documentation
 
@@ -90,7 +101,7 @@ Each workspace gets:
 
 ```bash
 # Inside container
-cd /workspace/development/frappe-bench
+cd /workspace/workspaces/frappe-bench
 
 bench start                              # Start development server
 bench --site dartwing.localhost migrate  # Run migrations
