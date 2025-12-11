@@ -14,19 +14,34 @@ echo "Running inside devcontainer"
 echo -e "==========================================${NC}"
 echo ""
 
+# Determine script location and workspace root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BENCH_DIR="${WORKSPACE_ROOT}/bench"
+
+echo -e "${BLUE}Workspace Structure:${NC}"
+echo -e "  Workspace root: ${WORKSPACE_ROOT}"
+echo -e "  Bench directory: ${BENCH_DIR}"
+echo ""
+
 # Check if setup already completed
-if [ -f "/workspace/workspaces/.setup_complete" ]; then
+SETUP_MARKER="${BENCH_DIR}/.setup_complete"
+if [ -f "$SETUP_MARKER" ]; then
     echo -e "${GREEN}Setup already completed. Skipping...${NC}"
-    echo -e "${YELLOW}To re-run setup, delete: /workspace/workspaces/.setup_complete${NC}"
+    echo -e "${YELLOW}To re-run setup, delete: ${SETUP_MARKER}${NC}"
     exit 0
 fi
 
 # Load environment variables from .env
-if [ -f "/workspace/.devcontainer/.env" ]; then
-    export $(grep -v '^#' /workspace/.devcontainer/.env | xargs)
+ENV_FILE="${WORKSPACE_ROOT}/.devcontainer/.env"
+if [ -f "$ENV_FILE" ]; then
+    while IFS= read -r line; do
+        [[ -z "$line" || "$line" =~ ^# || "$line" =~ ^(UID|GID)= ]] && continue
+        export "$line"
+    done < "$ENV_FILE"
     echo -e "${GREEN}✓ Loaded environment variables${NC}"
 else
-    echo -e "${RED}✗ .env file not found!${NC}"
+    echo -e "${RED}✗ .env file not found at: ${ENV_FILE}${NC}"
     exit 1
 fi
 
@@ -37,14 +52,14 @@ echo -e "  Codename: ${CODENAME}"
 echo ""
 
 # Step 1: Initialize Frappe Bench
-echo -e "${BLUE}[1/5] Initializing Frappe bench...${NC}"
+echo -e "${BLUE}[1/6] Initializing Frappe bench...${NC}"
 echo -e "${YELLOW}  → This will take several minutes...${NC}"
 
-cd /workspace/workspaces/frappe-bench
+cd "$BENCH_DIR"
 
 # Check if bench is already initialized
 if [ ! -f "sites/apps.txt" ]; then
-    bench init --skip-redis-config-generation --frappe-branch version-15 .
+bench init --skip-redis-config-generation --ignore-exist --frappe-branch version-15 .
     
     # Configure Redis and DB connections
     cat > sites/common_site_config.json << 'EOF'
@@ -63,8 +78,32 @@ else
 fi
 echo ""
 
+# Ensure common_site_config.json settings (run every time)
+echo -e "${BLUE}Ensuring bench common_site_config.json settings...${NC}"
+CONFIG_PATH="sites/common_site_config.json"
+TMP_CFG="$(mktemp)"
+cat > "$TMP_CFG" << 'EOF'
+{
+  "db_host": "frappe-mariadb",
+  "db_port": 3306,
+  "redis_cache": "redis://frappe-redis-cache:6379",
+  "redis_queue": "redis://frappe-redis-queue:6379",
+  "redis_socketio": "redis://frappe-redis-socketio:6379"
+}
+EOF
+if [ -f "$CONFIG_PATH" ]; then
+  jq -s '.[0] * .[1]' "$CONFIG_PATH" "$TMP_CFG" > "${CONFIG_PATH}.tmp" && mv "${CONFIG_PATH}.tmp" "$CONFIG_PATH"
+  echo -e "${GREEN}  ✓ Merged desired settings into ${CONFIG_PATH}${NC}"
+else
+  mkdir -p "$(dirname "$CONFIG_PATH")"
+  mv "$TMP_CFG" "$CONFIG_PATH"
+  echo -e "${GREEN}  ✓ Created ${CONFIG_PATH} with desired settings${NC}"
+fi
+rm -f "$TMP_CFG" 2>/dev/null || true
+echo ""
+
 # Step 2: Install Apps in Bench (from .env or default to dartwing)
-echo -e "${BLUE}[2/5] Installing apps in bench...${NC}"
+echo -e "${BLUE}[2/6] Installing apps in bench...${NC}"
 
 # Get app list from .env or default
 APPS_TO_INSTALL="${APPS_TO_INSTALL:-dartwing}"
@@ -76,10 +115,16 @@ for app in "${APPS[@]}"; do
     app=$(echo "$app" | xargs) # trim whitespace
     
     if [ "$app" == "dartwing" ]; then
-        # Special handling for dartwing app
-        if ! grep -q "frappe-app-dartwing" sites/apps.txt 2>/dev/null; then
-            bench get-app ./apps/frappe-app-dartwing
-            echo -e "${GREEN}  ✓ dartwing app registered with bench${NC}"
+        # Special handling for dartwing app - it's already in apps/ directory
+if ! grep -q "dartwing" sites/apps.txt 2>/dev/null; then
+            if [ -d "${BENCH_DIR}/apps/dartwing" ]; then
+                bench get-app "./apps/dartwing"
+                echo -e "${GREEN}  ✓ dartwing (local) registered with bench${NC}"
+            else
+                echo -e "${YELLOW}  → Local dartwing app not found, cloning from GitHub...${NC}"
+                bench get-app https://github.com/opensoft/frappe-app-dartwing.git
+                echo -e "${GREEN}  ✓ dartwing (GitHub) registered with bench${NC}"
+            fi
         else
             echo -e "${YELLOW}  → dartwing app already registered${NC}"
         fi
@@ -97,7 +142,7 @@ done
 echo ""
 
 # Step 3: Create Site
-echo -e "${BLUE}[3/5] Creating Frappe site...${NC}"
+echo -e "${BLUE}[3/6] Creating Frappe site...${NC}"
 echo -e "${YELLOW}  → This may take a few minutes...${NC}"
 
 if [ ! -d "sites/${SITE_NAME}" ]; then
@@ -114,7 +159,7 @@ fi
 echo ""
 
 # Step 4: Install Apps on Site
-echo -e "${BLUE}[4/5] Installing apps on site...${NC}"
+echo -e "${BLUE}[4/6] Installing apps on site...${NC}"
 
 for app in "${APPS[@]}"; do
     app=$(echo "$app" | xargs) # trim whitespace
@@ -133,9 +178,29 @@ bench use ${SITE_NAME}
 echo -e "${GREEN}  ✓ Set as default site${NC}"
 echo ""
 
-# Step 5: Mark Setup Complete
-echo -e "${BLUE}[5/5] Marking setup as complete...${NC}"
-touch /workspace/workspaces/.setup_complete
+# Step 5: Enable Developer Mode and Additional Developer Options
+echo -e "${BLUE}[5/6] Configuring developer options...${NC}"
+
+# Enable developer mode globally
+bench set-config -g developer_mode 1
+echo -e "${GREEN}  ✓ Developer mode enabled${NC}"
+
+# Enable custom JavaScript scripts for development
+bench set-config -g allow_js_scripts true
+echo -e "${GREEN}  ✓ Custom JS scripts enabled${NC}"
+
+# Disable debugger restrictions for development
+bench set-config -g disable_debugger false
+echo -e "${GREEN}  ✓ Debugger enabled${NC}"
+
+# Clear cache to apply all changes
+bench clear-cache
+echo -e "${GREEN}  ✓ Cache cleared${NC}"
+echo ""
+
+# Step 6: Mark Setup Complete
+echo -e "${BLUE}[6/6] Marking setup as complete...${NC}"
+touch "$SETUP_MARKER"
 echo -e "${GREEN}  ✓ Setup complete marker created${NC}"
 echo ""
 
@@ -150,6 +215,6 @@ echo -e "  Username: ${YELLOW}Administrator${NC}"
 echo -e "  Password: ${YELLOW}admin${NC}"
 echo ""
 echo -e "To start developing:"
-echo -e "  ${YELLOW}cd /workspace/workspaces/frappe-bench${NC}"
+echo -e "  ${YELLOW}cd ${BENCH_DIR}${NC}"
 echo -e "  ${YELLOW}bench start${NC}"
 echo ""

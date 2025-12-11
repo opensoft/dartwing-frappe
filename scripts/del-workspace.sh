@@ -47,7 +47,59 @@ echo -e "  Name: ${YELLOW}${WORKSPACE_NAME}${NC}"
 echo -e "  Location: ${YELLOW}${WORKSPACE_DIR}${NC}"
 echo ""
 
+# Check for uncommitted changes in frappe-app-dartwing
+APP_DIR="${WORKSPACE_DIR}/bench/apps/dartwing"
+HAS_UNCOMMITTED_CHANGES=false
+
+if [ -d "$APP_DIR/.git" ]; then
+    echo -e "${BLUE}Checking for uncommitted changes...${NC}"
+    cd "$APP_DIR"
+    
+    # Get current branch
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    echo -e "  Branch: ${BLUE}${BRANCH}${NC}"
+    
+    # Check for uncommitted changes (staged and unstaged)
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        HAS_UNCOMMITTED_CHANGES=true
+        echo -e "  ${RED}⚠ WARNING: Uncommitted changes detected!${NC}"
+        echo ""
+        echo -e "${YELLOW}Uncommitted changes:${NC}"
+        git status --short
+        echo ""
+    else
+        echo -e "  ${GREEN}✓ No uncommitted changes${NC}"
+        
+        # Check if in sync with remote
+        git fetch --quiet 2>/dev/null || true
+        LOCAL=$(git rev-parse @ 2>/dev/null)
+        REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
+        
+        if [ "$LOCAL" = "$REMOTE" ]; then
+            echo -e "  ${GREEN}✓ In sync with remote${NC}"
+        elif [ -z "$REMOTE" ]; then
+            echo -e "  ${YELLOW}⚠ No upstream branch set${NC}"
+        else
+            echo -e "  ${YELLOW}⚠ Local commits not pushed to remote${NC}"
+            HAS_UNCOMMITTED_CHANGES=true
+        fi
+    fi
+    
+    cd "$PROJECT_ROOT"
+    echo ""
+fi
+
 # Confirm deletion
+if [ "$HAS_UNCOMMITTED_CHANGES" = true ]; then
+    echo -e "${RED}==========================================${NC}"
+    echo -e "${RED}CRITICAL WARNING${NC}"
+    echo -e "${RED}==========================================${NC}"
+    echo -e "${RED}This workspace has uncommitted or unpushed changes!${NC}"
+    echo -e "${RED}Deleting now will result in PERMANENT DATA LOSS.${NC}"
+    echo -e "${RED}==========================================${NC}"
+    echo ""
+fi
+
 echo -e "${YELLOW}WARNING: This will permanently delete the entire workspace directory!${NC}"
 echo -e "${RED}This action cannot be undone.${NC}"
 echo ""

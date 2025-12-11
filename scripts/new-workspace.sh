@@ -98,6 +98,7 @@ if [ -d "$NEW_DIR" ]; then
 fi
 
 mkdir -p "${NEW_DIR}/bench/apps"
+mkdir -p "${NEW_DIR}/scripts"
 echo -e "${GREEN}  ✓ Workspace directory created${NC}"
 echo ""
 
@@ -109,7 +110,9 @@ if [ ! -d "${PROJECT_ROOT}/devcontainer.example" ]; then
 fi
 
 cp -r "${PROJECT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
+cp "${PROJECT_ROOT}/scripts/init-bench.sh" "${NEW_DIR}/scripts/"
 echo -e "${GREEN}  ✓ Devcontainer template copied${NC}"
+echo -e "${GREEN}  ✓ Init bench script copied${NC}"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
 BASE_PORT=8201
@@ -172,7 +175,7 @@ echo ""
 
 # Step 3: Update devcontainer.json name
 echo -e "${BLUE}[3/4] Customizing devcontainer settings...${NC}"
-sed -i "s/\"name\": \"Dartwing Frappe App\"/\"name\": \"Dartwing Frappe - ${WORKSPACE_NAME}\"/" "${NEW_DIR}/.devcontainer/devcontainer.json"
+sed -i "s/WORKSPACE_NAME/${WORKSPACE_NAME}/g" "${NEW_DIR}/.devcontainer/devcontainer.json"
 echo -e "${GREEN}  ✓ Devcontainer name updated${NC}"
 echo ""
 

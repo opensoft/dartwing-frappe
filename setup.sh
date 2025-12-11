@@ -39,13 +39,118 @@ fi
 echo -e "${GREEN}  ✓ new-workspace.sh found${NC}"
 echo ""
 
-# Step 2: Ensure workspaces folder exists
+# Step 2: Ensure workspaces folder exists and check existing workspaces
 echo -e "${BLUE}[2/3] Checking workspaces directory...${NC}"
 if [ ! -d "${PROJECT_ROOT}/workspaces" ]; then
     mkdir -p "${PROJECT_ROOT}/workspaces"
     echo -e "${GREEN}  ✓ Created workspaces directory${NC}"
 else
     echo -e "${YELLOW}  → workspaces directory already exists${NC}"
+    
+    # Get current template version
+    CURRENT_TEMPLATE_VERSION=""
+    if [ -f "${PROJECT_ROOT}/devcontainer.example/README.md" ]; then
+        CURRENT_TEMPLATE_VERSION=$(grep 'Current Version:' "${PROJECT_ROOT}/devcontainer.example/README.md" | grep -oP '\d+\.\d+\.\d+')
+    fi
+    
+    # Check existing workspaces
+    WORKSPACES_FOUND=false
+    WORKSPACES_TO_UPDATE=()
+    
+    for workspace_dir in "${PROJECT_ROOT}/workspaces"/*; do
+        if [ -d "$workspace_dir" ]; then
+            WORKSPACES_FOUND=true
+            workspace_name=$(basename "$workspace_dir")
+            
+            echo -e "\n${BLUE}  Checking workspace: ${workspace_name}${NC}"
+            
+            # Check devcontainer version
+            WORKSPACE_VERSION="unknown"
+            if [ -f "${workspace_dir}/.devcontainer/README.md" ]; then
+                WORKSPACE_VERSION=$(grep 'Current Version:' "${workspace_dir}/.devcontainer/README.md" | grep -oP '\d+\.\d+\.\d+' || echo "unknown")
+            fi
+            
+            if [ "$WORKSPACE_VERSION" = "$CURRENT_TEMPLATE_VERSION" ]; then
+                echo -e "    ${GREEN}✓ Devcontainer version: ${WORKSPACE_VERSION} (up to date)${NC}"
+            else
+                echo -e "    ${YELLOW}⚠ Devcontainer version: ${WORKSPACE_VERSION} (latest: ${CURRENT_TEMPLATE_VERSION})${NC}"
+                WORKSPACES_TO_UPDATE+=("$workspace_name")
+            fi
+            
+            # Check frappe-app-dartwing git status
+            APP_DIR="${workspace_dir}/bench/apps/dartwing"
+            if [ -d "$APP_DIR/.git" ]; then
+                cd "$APP_DIR"
+                
+                # Get current branch
+                BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+                echo -e "    ${BLUE}→ App branch: ${BRANCH}${NC}"
+                
+                # Check for uncommitted changes
+                if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+                    echo -e "    ${YELLOW}⚠ Uncommitted changes in dartwing app${NC}"
+                else
+                    # Check if in sync with remote
+                    git fetch --quiet 2>/dev/null || true
+                    LOCAL=$(git rev-parse @ 2>/dev/null)
+                    REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
+                    
+                    if [ "$LOCAL" = "$REMOTE" ]; then
+                        echo -e "    ${GREEN}✓ App repository in sync with remote${NC}"
+                    elif [ -z "$REMOTE" ]; then
+                        echo -e "    ${YELLOW}⚠ No upstream branch set${NC}"
+                    else
+                        echo -e "    ${YELLOW}⚠ App repository out of sync with remote${NC}"
+                    fi
+                fi
+                
+                cd "$PROJECT_ROOT"
+            else
+                echo -e "    ${YELLOW}⚠ dartwing app not found or not a git repository${NC}"
+            fi
+        fi
+    done
+    
+    # Ask to update workspaces if needed
+    if [ ${#WORKSPACES_TO_UPDATE[@]} -gt 0 ]; then
+        echo -e "\n${YELLOW}The following workspaces have outdated devcontainer templates:${NC}"
+        for ws in "${WORKSPACES_TO_UPDATE[@]}"; do
+            echo -e "  - $ws"
+        done
+        echo -e "\n${YELLOW}Update these workspaces to version ${CURRENT_TEMPLATE_VERSION}?${NC}"
+        echo -e "${YELLOW}This will backup and replace devcontainer files.${NC}"
+        read -p "Update workspaces? (y/N): " -n 1 -r
+        echo ""
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            for ws in "${WORKSPACES_TO_UPDATE[@]}"; do
+                echo -e "\n${BLUE}Updating workspace: ${ws}${NC}"
+                
+                # Backup current devcontainer
+                BACKUP_DIR="${PROJECT_ROOT}/workspaces/${ws}/.devcontainer.backup.$(date +%Y%m%d-%H%M%S)"
+                cp -r "${PROJECT_ROOT}/workspaces/${ws}/.devcontainer" "$BACKUP_DIR"
+                echo -e "  ${GREEN}✓ Backup created: $(basename "$BACKUP_DIR")${NC}"
+                
+                # Copy new template (except .env to preserve workspace-specific settings)
+                rm -rf "${PROJECT_ROOT}/workspaces/${ws}/.devcontainer"
+                cp -r "${PROJECT_ROOT}/devcontainer.example" "${PROJECT_ROOT}/workspaces/${ws}/.devcontainer"
+                
+                # Restore .env from backup
+                if [ -f "${BACKUP_DIR}/.env" ]; then
+                    cp "${BACKUP_DIR}/.env" "${PROJECT_ROOT}/workspaces/${ws}/.devcontainer/.env"
+                    echo -e "  ${GREEN}✓ Preserved workspace .env settings${NC}"
+                fi
+                
+                # Update devcontainer.json with workspace name
+                sed -i "s/WORKSPACE_NAME/${ws}/g" "${PROJECT_ROOT}/workspaces/${ws}/.devcontainer/devcontainer.json"
+                
+                echo -e "  ${GREEN}✓ Updated to version ${CURRENT_TEMPLATE_VERSION}${NC}"
+            done
+            echo -e "\n${GREEN}All workspaces updated!${NC}"
+        else
+            echo -e "${YELLOW}Skipping workspace updates${NC}"
+        fi
+    fi
 fi
 echo ""
 

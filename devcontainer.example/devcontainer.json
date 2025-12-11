@@ -1,8 +1,8 @@
 {
-  "name": "Dartwing Frappe - bravo",
+  "name": "Dartwing Frappe - WORKSPACE_NAME",
 
   // This devcontainer connects to the existing Frappe infrastructure
-  // Started from /home/brett/projects/frappe
+  // Those resources are in the infrastructure started from /home/brett/projects/frappe.
   "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "dartwing-dev",
   "workspaceFolder": "/workspace",
@@ -39,7 +39,7 @@
         "d3j.gemini-cli-on-vscode"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspace/workspaces/frappe-bench/env/bin/python",
+        "python.defaultInterpreterPath": "/workspace/bench/env/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": false,
         "python.linting.flake8Enabled": true,
@@ -54,11 +54,10 @@
     }
   },
 
-  "remoteUser": "${localEnv:USER}"
-
+  "remoteUser": "${localEnv:USER}",
   "updateRemoteUserUID": false,
 
   "postCreateCommand": "~/.local/bin/uv tool install specify-cli --force --from git+https://github/spec-kit.git || echo 'Failed to install spec-kit' && echo 'Dartwing Frappe development environment ready'",
-  "postStartCommand": "bash /workspace/scripts/setup_dartwing_in_frappeBench.sh || echo 'Setup will run when bench is available'",
-  "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/workspaces/frappe-bench'"
+"postStartCommand": "echo 'Starting Dartwing setup...' && bash /workspace/scripts/setup-workspace.sh 2>&1 | tee /workspace/setup.log && echo 'Setup completed successfully' || echo 'Setup failed or will run when bench is available - check /workspace/setup.log'"
+  "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench at /workspace/bench'"
 }
