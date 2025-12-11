@@ -1,4 +1,4 @@
-FROM frappe/bench:latest
+FROM ubuntu:24.04
 
 # Container version labels for runtime identification
 LABEL devcontainer.version="1.0.0"
@@ -11,10 +11,10 @@ USER root
 
 
 # ========================================
-# TOOLING SETUP - Various dev tools
+# ROOT USER: TOOLING SETUP - System-wide development tools
 # ========================================
 
-# Install additional development tools
+# ROOT: Installing additional development tools (git, vim, nano, curl, wget, jq, networking tools, sudo, zsh)
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     git \
@@ -27,45 +27,37 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     net-tools \
     sudo \
     zsh \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    libmysqlclient-dev \
+    libssl-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (LTS version)
+# ROOT: Installing Node.js LTS version
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python development tools
-RUN pip install --upgrade pip \
-    && pip install \
+# ROOT: Installing Python development tools (black, flake8, isort, pylint, pytest, ipython)
+RUN pip install --break-system-packages \
     black \
     flake8 \
     isort \
     pylint \
     pytest \
-    ipython
+    ipython \
+    frappe-bench
 
 
 # ========================================
-# BENCH SETUP - only verify
+# ROOT USER: USER SETUP - Match host UID/GID
 # ========================================
 
-# 1. Switch to the correct user immediately
-USER frappe
-
-# 2. Set the working directory to where bench expects to be
-WORKDIR /home/frappe/bench
-
-# Verify everything is there (optional, but good for peace of mind)
-RUN bench --version && python3 --version && pip --version
-
-
-# ========================================
-# USER SETUP - Match host UID/GID
-# ========================================
-
-# Switch back to root for user management
+# Switching back to ROOT for user management
 USER root
 
 # Build arguments for user management
@@ -97,42 +89,64 @@ RUN set -eux && \
     chmod 0440 /etc/sudoers.d/$USERNAME
 
 
+
 # ========================================
-# AI SETUP - Spec-Kit and OpenSpec
+# USERNAME USER: Verification of Frappe Bench
 # ========================================
 
-# Install uv (fast Python package installer) as user
+# Switching to USERNAME for user-specific step
+USER $USERNAME
+
+# USERNAME: Verifying bench, Python, and pip installations
+RUN bench --version && python3 --version && pip --version
+
+
+
+# ========================================
+# USERNAME USER: AI SETUP - AI Tools, Spec-Kit, OpenSpec, Codex, Gemini, and Copilot
+# ========================================
+
+# USERNAME: Installing uv (fast Python package installer) to ~/.local/bin
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install spec-kit using uv (installed to ~/.local/bin)
-RUN $HOME/.local/bin/uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+# USERNAME: Configuring npm to use user-local directory for global installs
+RUN mkdir -p $HOME/.npm-global && \
+    npm config set prefix $HOME/.npm-global
 
-# Install OpenSpec to user-local npm directory
+# USERNAME: Installing OpenSpec to user-local npm directory (~/.npm-global/bin)
 RUN npm install -g @fission-ai/openspec@latest
 
+# USERNAME: Installing Claude Code CLI to user-local npm directory (~/.npm-global/bin)
+RUN npm install -g @anthropic-ai/claude-code
+
+# USERNAME: Installing OpenAI Codex CLI to user-local npm directory (~/.npm-global/bin)
+RUN npm install -g @openai/codex
+
+# USERNAME: Installing Google Gemini CLI to user-local npm directory (~/.npm-global/bin)
+RUN npm install -g @google/gemini-cli
+
+# USERNAME: Installing GitHub Copilot CLI to user-local npm directory (~/.npm-global/bin)
+RUN npm install -g @githubnext/github-copilot-cli
+
+
 
 # ========================================
-# USER SETUP - Install and config zsh
+# USERNAME USER: ZSH SETUP - Oh My Zsh and shell configuration
 # ========================================
 
-# Add bench and uv tools to PATH
+# USERNAME: Updating PATH for local bins in user's shell configs
 RUN echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.zshrc && \
+    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
 
-# Install Oh My Zsh for better developer experience
-USER $USERNAME
+# USERNAME: Installing Oh My Zsh for better developer experience
 RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh -s -- --unattended || \
     echo "Oh My Zsh installation failed, using default zsh"
 
 # Install Oh My Zsh plugins
 RUN git clone https://github.com/zsh-users/zsh-autosuggestions ~/.oh-my-zsh/plugins/zsh-autosuggestions && \
     git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.oh-my-zsh/plugins/zsh-syntax-highlighting
-
-# Configure npm to use user-local directory for global installs
-RUN mkdir -p $HOME/.npm-global && \
-    npm config set prefix $HOME/.npm-global && \
-    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
 
 # Override bash profile to run zsh instead of bash
 RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \
@@ -146,6 +160,12 @@ RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \
 # Safety command: Ensure the user shell is set to zsh
 USER root
 RUN chsh -s /bin/zsh $USERNAME
+
+
+
+# ========================================
+# USERNAME USER: WORKSPACE SETUP - Creating development workspace
+# ========================================
 
 # Create workspace directories with proper ownership
 RUN mkdir -p /workspace/development && \

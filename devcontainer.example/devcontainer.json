@@ -1,5 +1,5 @@
 {
-  "name": "Dartwing Frappe App",
+  "name": "Dartwing Frappe - bravo",
 
   // This devcontainer connects to the existing Frappe infrastructure
   // Started from /home/brett/projects/frappe
@@ -29,11 +29,14 @@
         // AI assistance extensions
         "anthropic.claude-dev",
         "anthropic.claude-code",
+        "andrepimenta.claude-code-chat",
+        "vadbeg.vsclaude",
         "openai.chatgpt",
         "GitHub.copilot",
         "GitHub.copilot-chat",
         "Google.geminicodeassist",
-        "google.gemini-cli-vscode-ide-companion"
+        "google.gemini-cli-vscode-ide-companion",
+        "d3j.gemini-cli-on-vscode"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/workspace/workspaces/frappe-bench/env/bin/python",
@@ -55,7 +58,7 @@
 
   "updateRemoteUserUID": false,
 
-  "postCreateCommand": "echo 'Dartwing Frappe development environment ready'",
+  "postCreateCommand": "~/.local/bin/uv tool install specify-cli --force --from git+https://github/spec-kit.git || echo 'Failed to install spec-kit' && echo 'Dartwing Frappe development environment ready'",
   "postStartCommand": "bash /workspace/scripts/setup_dartwing_in_frappeBench.sh || echo 'Setup will run when bench is available'",
   "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench shared at /workspace/workspaces/frappe-bench'"
 }
