@@ -17,6 +17,8 @@ services:
     volumes:
       # Workspace (includes local workspaces/frappe-bench)
       - ../:/workspace:cached
+      # Mount repo root (3 levels up from workspaces/<name>/.devcontainer) for shared scripts
+      - ../../..:/repo:ro
 
       # Mount Docker socket to enable docker commands inside container
       - /var/run/docker.sock:/var/run/docker.sock:rw

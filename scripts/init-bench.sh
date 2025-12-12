@@ -246,6 +246,52 @@ for app in "${APPS[@]}"; do
 done
 echo ""
 
+# Ensure known fixture issues don't break installs/migrations
+echo -e "${BLUE}Validating app fixtures...${NC}"
+ROLE_TEMPLATE_FIXTURE="apps/dartwing/dartwing/fixtures/role_template.json"
+if [ -f "$ROLE_TEMPLATE_FIXTURE" ]; then
+    FIXTURE_RESULT="$(
+        python3 - "$ROLE_TEMPLATE_FIXTURE" <<'PY'
+import json
+import sys
+from collections import OrderedDict
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f, object_pairs_hook=OrderedDict)
+
+changed = False
+if isinstance(data, list):
+    for obj in data:
+        if isinstance(obj, dict) and "doctype" in obj and "name" not in obj:
+            role_name = obj.get("role_name")
+            if role_name:
+                obj["name"] = role_name
+                changed = True
+
+if changed:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print("patched")
+else:
+    print("ok")
+PY
+    )" || {
+        echo -e "${RED}  ✗ Failed to validate/patch ${ROLE_TEMPLATE_FIXTURE}${NC}"
+        exit 1
+    }
+
+    if [ "$FIXTURE_RESULT" = "patched" ]; then
+        echo -e "${GREEN}  ✓ Patched missing \"name\" fields in ${ROLE_TEMPLATE_FIXTURE}${NC}"
+    else
+        echo -e "${GREEN}  ✓ Fixtures look good${NC}"
+    fi
+else
+    echo -e "${YELLOW}  → ${ROLE_TEMPLATE_FIXTURE} not found; skipping${NC}"
+fi
+echo ""
+
 # Step 3: Create Site
 echo -e "${BLUE}[3/6] Creating Frappe site...${NC}"
 echo -e "${YELLOW}  → This may take a few minutes...${NC}"

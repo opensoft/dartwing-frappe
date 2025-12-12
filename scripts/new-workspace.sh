@@ -110,12 +110,12 @@ if [ ! -d "${PROJECT_ROOT}/devcontainer.example" ]; then
 fi
 
 cp -r "${PROJECT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
-cp "${PROJECT_ROOT}/scripts/init-bench.sh" "${NEW_DIR}/scripts/"
-cp "${PROJECT_ROOT}/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/"
-chmod +x "${NEW_DIR}/scripts/setup-workspace.sh"
+# Link workspace scripts to shared versions in repo (mounted at /repo in container)
+ln -s "/repo/scripts/init-bench.sh" "${NEW_DIR}/scripts/init-bench.sh"
+ln -s "/repo/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/setup-workspace.sh"
 echo -e "${GREEN}  ✓ Devcontainer template copied${NC}"
-echo -e "${GREEN}  ✓ Init bench script copied${NC}"
-echo -e "${GREEN}  ✓ Setup workspace script copied${NC}"
+echo -e "${GREEN}  ✓ Init bench script linked${NC}"
+echo -e "${GREEN}  ✓ Setup workspace script linked${NC}"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
 BASE_PORT=8201
