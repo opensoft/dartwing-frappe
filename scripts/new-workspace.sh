@@ -143,6 +143,7 @@ cat > "${NEW_DIR}/.devcontainer/.env" << EOF
 # Workspace: ${WORKSPACE_NAME}
 CODENAME=${WORKSPACE_NAME}
 CONTAINER_NAME=dartwing-frappe-${WORKSPACE_NAME}
+COMPOSE_PROJECT_NAME=dartwing-frappe-${WORKSPACE_NAME}
 HOST_PORT=${HOST_PORT}
 
 # User configuration
