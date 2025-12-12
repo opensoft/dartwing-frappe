@@ -198,6 +198,50 @@ echo ""
 # Step 2: Install Apps in Bench (from .env or default to dartwing)
 echo -e "${BLUE}[2/6] Installing apps in bench...${NC}"
 
+APPS_TXT="sites/apps.txt"
+python3 - "$APPS_TXT" "${APPS[@]}" <<'PY' || true
+import os
+import sys
+
+path = sys.argv[1]
+expected_apps = [a.strip() for a in sys.argv[2:] if a.strip()]
+
+if not os.path.exists(path):
+    sys.exit(0)
+
+with open(path, "rb") as f:
+    data = f.read()
+
+# Ensure apps.txt ends with a newline so app appends don't concatenate ("frappe" + "dartwing")
+if data and not data.endswith(b"\n"):
+    data += b"\n"
+
+text = data.decode("utf-8", errors="ignore")
+lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+
+# Repair the common broken case where "frappe" and the next app got concatenated
+repaired = []
+for ln in lines:
+    fixed = False
+    for app in expected_apps:
+        if ln == f"frappe{app}":
+            repaired.extend(["frappe", app])
+            fixed = True
+            break
+    if not fixed:
+        repaired.append(ln)
+
+# De-dupe preserving order and write back with a trailing newline
+out = []
+for ln in repaired:
+    if ln not in out:
+        out.append(ln)
+
+with open(path, "w", encoding="utf-8") as f:
+    if out:
+        f.write("\n".join(out) + "\n")
+PY
+
 for app in "${APPS[@]}"; do
     app=$(echo "$app" | xargs) # trim whitespace
 
@@ -213,7 +257,25 @@ for app in "${APPS[@]}"; do
             echo -e "${YELLOW}  → ${app} already registered (local)${NC}"
         else
             echo -e "${YELLOW}  → Registering existing app: ${app}${NC}"
-            echo "${app}" >> sites/apps.txt
+            python3 - "$APPS_TXT" "$app" <<'PY'
+import os
+import sys
+
+path = sys.argv[1]
+app = sys.argv[2].strip()
+
+lines = []
+if os.path.exists(path):
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
+
+if app and app not in lines:
+    lines.append(app)
+
+with open(path, "w", encoding="utf-8") as f:
+    if lines:
+        f.write("\n".join(lines) + "\n")
+PY
             echo -e "${GREEN}  ✓ ${app} registered from existing directory${NC}"
         fi
         bench build --app "${app}" || true
