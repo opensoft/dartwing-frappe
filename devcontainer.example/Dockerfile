@@ -34,6 +34,7 @@ python3-dev \
     openssh-client \
     cron \
     build-essential \
+    mariadb-client \
     libmysqlclient-dev \
     libssl-dev \
     && apt-get clean \

@@ -17,6 +17,24 @@ echo "Running inside devcontainer"
 echo -e "==========================================${NC}"
 echo ""
 
+# Install required packages if not present
+echo -e "${BLUE}Ensuring required packages are installed...${NC}"
+if ! command -v mariadb >/dev/null 2>&1; then
+    echo -e "${YELLOW}  → mariadb client not found; attempting install...${NC}"
+    if command -v sudo >/dev/null 2>&1; then
+        sudo apt-get update && sudo apt-get install -y mariadb-client || true
+    else
+        apt-get update && apt-get install -y mariadb-client || true
+    fi
+fi
+if command -v mariadb >/dev/null 2>&1; then
+    echo -e "${GREEN}  ✓ mariadb-client available${NC}"
+else
+    echo -e "${RED}  ✗ mariadb-client still missing; rebuild container${NC}"
+    exit 1
+fi
+echo ""
+
 # Determine script location and workspace root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -60,12 +78,18 @@ fi
 # Set defaults based on NAME
 SITE_NAME="${SITE_NAME:-${NAME}.localhost}"
 DB_NAME="${DB_NAME:-dartwing_${NAME}}"
+DB_HOST="${DB_HOST:-frappe-mariadb}"
+DB_PORT="${DB_PORT:-3306}"
 if [ -z "${CODENAME:-}" ] || [ "${CODENAME}" = "default" ]; then
     CODENAME="${NAME}"
 fi
 HOST_PORT="${HOST_PORT:-8000}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-frappe}"
+
+# Get app list from .env or default (used for pre-clone and install)
+APPS_TO_INSTALL="${APPS_TO_INSTALL:-dartwing}"
+IFS=',' read -ra APPS <<< "$APPS_TO_INSTALL"
 
 echo -e "${BLUE}Workspace Structure:${NC}"
 echo -e "  Workspace root: ${WORKSPACE_ROOT}"
@@ -79,6 +103,7 @@ echo -e "  Site: ${SITE_NAME}"
 echo -e "  Database: ${DB_NAME}"
 echo -e "  Codename: ${CODENAME}"
 echo -e "  Host port: ${HOST_PORT}"
+echo -e "  Apps: ${APPS_TO_INSTALL}"
 echo ""
 
 # Check if setup already completed
@@ -95,6 +120,31 @@ echo -e "${YELLOW}  → This will take several minutes...${NC}"
 
 mkdir -p "$BENCH_DIR"
 cd "$BENCH_DIR"
+
+# Pre-clone apps before bench init if needed (bench commands require an initialized bench)
+if [ ! -f "sites/apps.txt" ]; then
+    mkdir -p "apps"
+    for app in "${APPS[@]}"; do
+        app=$(echo "$app" | xargs)
+        [ -z "$app" ] && continue
+        if [ "$app" = "dartwing" ]; then
+            if [ ! -d "apps/dartwing" ]; then
+                echo -e "${YELLOW}  → Pre-cloning dartwing app before bench init...${NC}"
+                git clone https://github.com/opensoft/frappe-app-dartwing.git "apps/dartwing"
+                echo -e "${GREEN}  ✓ dartwing app pre-cloned${NC}"
+            elif [ -d "apps/dartwing/.git" ]; then
+                echo -e "${YELLOW}  → dartwing already present; checking for updates...${NC}"
+                if git -C "apps/dartwing" diff-index --quiet HEAD -- 2>/dev/null; then
+                    git -C "apps/dartwing" pull --ff-only || echo -e "${YELLOW}  → Update failed or offline; continuing${NC}"
+                else
+                    echo -e "${YELLOW}  → Uncommitted changes in apps/dartwing; skipping pull${NC}"
+                fi
+            else
+                echo -e "${YELLOW}  → apps/dartwing exists but is not a git repo; skipping update${NC}"
+            fi
+        fi
+    done
+fi
 
 # Check if bench is already initialized
 if [ ! -f "sites/apps.txt" ]; then
@@ -125,6 +175,7 @@ cat > "$TMP_CFG" << 'EOF'
 {
   "db_host": "frappe-mariadb",
   "db_port": 3306,
+  "db_root_password": "frappe",
   "redis_cache": "redis://frappe-redis-cache:6379",
   "redis_queue": "redis://frappe-redis-queue:6379",
   "redis_socketio": "redis://frappe-redis-socketio:6379"
@@ -143,12 +194,6 @@ echo ""
 
 # Step 2: Install Apps in Bench (from .env or default to dartwing)
 echo -e "${BLUE}[2/6] Installing apps in bench...${NC}"
-
-# Get app list from .env or default
-APPS_TO_INSTALL="${APPS_TO_INSTALL:-dartwing}"
-
-# Split comma-separated apps
-IFS=',' read -ra APPS <<< "$APPS_TO_INSTALL"
 
 for app in "${APPS[@]}"; do
     app=$(echo "$app" | xargs) # trim whitespace
@@ -176,6 +221,10 @@ for app in "${APPS[@]}"; do
         # Special handling for dartwing app - clone from GitHub if missing
         if ! grep -q "^dartwing$" sites/apps.txt 2>/dev/null; then
             echo 'y' | bench get-app https://github.com/opensoft/frappe-app-dartwing.git
+            if [ -x "env/bin/pip" ] && [ -d "$APP_DIR" ]; then
+                env/bin/pip install -e "$APP_DIR"
+            fi
+            bench build --app "${app}" || true
             echo -e "${GREEN}  ✓ dartwing app installed${NC}"
         else
             echo -e "${YELLOW}  → dartwing app already installed${NC}"
@@ -185,6 +234,10 @@ for app in "${APPS[@]}"; do
         if ! grep -q "^${app}$" sites/apps.txt 2>/dev/null; then
             echo -e "${YELLOW}  → Installing app: ${app}${NC}"
             bench get-app "$app"
+            if [ -x "env/bin/pip" ] && [ -d "$APP_DIR" ]; then
+                env/bin/pip install -e "$APP_DIR"
+            fi
+            bench build --app "${app}" || true
             echo -e "${GREEN}  ✓ ${app} registered with bench${NC}"
         else
             echo -e "${YELLOW}  → ${app} already registered${NC}"
@@ -196,6 +249,20 @@ echo ""
 # Step 3: Create Site
 echo -e "${BLUE}[3/6] Creating Frappe site...${NC}"
 echo -e "${YELLOW}  → This may take a few minutes...${NC}"
+
+# Clean up existing DB/site for rebuilds
+echo -e "${BLUE}Preparing site/database for creation...${NC}"
+SITE_DIR="sites/${SITE_NAME}"
+if [ -d "$SITE_DIR" ]; then
+    echo -e "${YELLOW}  → Removing existing site directory: ${SITE_DIR}${NC}"
+    rm -rf "$SITE_DIR"
+fi
+if command -v mariadb >/dev/null 2>&1; then
+    echo -e "${YELLOW}  → Dropping database if it exists: ${DB_NAME}${NC}"
+    mariadb --host="${DB_HOST}" --port="${DB_PORT}" --user=root --password="${DB_ROOT_PASSWORD}" \
+        --execute="DROP DATABASE IF EXISTS \`${DB_NAME}\`;" || true
+fi
+echo ""
 
 if [ ! -d "sites/${SITE_NAME}" ]; then
     bench new-site "${SITE_NAME}" \

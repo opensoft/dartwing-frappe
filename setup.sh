@@ -96,7 +96,9 @@ EOF
 }
 
 if mkdir -p "$INSTALL_DIR" 2>/dev/null; then
+    install_wrapper "new-workspace" "${SCRIPT_DIR}/new-workspace.sh"
     install_wrapper "new-workspace.sh" "${SCRIPT_DIR}/new-workspace.sh"
+    install_wrapper "del-workspace" "${SCRIPT_DIR}/del-workspace.sh"
     install_wrapper "del-workspace.sh" "${SCRIPT_DIR}/del-workspace.sh"
 
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
