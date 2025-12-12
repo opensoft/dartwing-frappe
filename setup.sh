@@ -21,7 +21,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="${PROJECT_ROOT}/scripts"
 
 # Step 1: Check prerequisites
-echo -e "${BLUE}[1/3] Checking prerequisites...${NC}"
+echo -e "${BLUE}[1/4] Checking prerequisites...${NC}"
 
 # Check if devcontainer.example exists
 if [ ! -d "${PROJECT_ROOT}/devcontainer.example" ]; then
@@ -37,10 +37,80 @@ if [ ! -f "${SCRIPT_DIR}/new-workspace.sh" ]; then
     exit 1
 fi
 echo -e "${GREEN}  ✓ new-workspace.sh found${NC}"
+
+# Check if del-workspace.sh exists
+if [ ! -f "${SCRIPT_DIR}/del-workspace.sh" ]; then
+    echo -e "${RED}  ✗ del-workspace.sh script not found!${NC}"
+    exit 1
+fi
+echo -e "${GREEN}  ✓ del-workspace.sh found${NC}"
 echo ""
 
-# Step 2: Ensure workspaces folder exists and check existing workspaces
-echo -e "${BLUE}[2/3] Checking workspaces directory...${NC}"
+# Step 2: Install workspace commands for easy access
+echo -e "${BLUE}[2/4] Installing workspace commands...${NC}"
+
+# Install to a shared bin under projects/dartwing by default.
+DARTWING_ROOT="$(dirname "$PROJECT_ROOT")"
+INSTALL_DIR="${DARTWING_BIN_DIR:-${DARTWING_ROOT}/bin}"
+
+install_wrapper() {
+    local script_name="$1"
+    local source_script="$2"
+    local install_path="${INSTALL_DIR}/${script_name}"
+    local need_install=true
+
+    if [ -L "$install_path" ]; then
+        local target
+        target="$(readlink "$install_path" 2>/dev/null || true)"
+        if [ "$target" = "$source_script" ]; then
+            need_install=false
+        fi
+    elif [ -f "$install_path" ]; then
+        if grep -Fq "exec \"${source_script}\"" "$install_path" 2>/dev/null; then
+            need_install=false
+        fi
+    fi
+
+    if [ "$need_install" = false ]; then
+        echo -e "${GREEN}  ✓ ${script_name} already installed at ${install_path}${NC}"
+        return 0
+    fi
+
+    if [ -e "$install_path" ]; then
+        echo -e "${YELLOW}  → Existing ${install_path} found${NC}"
+        read -p "Overwrite ${script_name} wrapper? (y/N): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${YELLOW}  → Skipping ${script_name} install${NC}"
+            return 0
+        fi
+    fi
+
+    rm -f "$install_path"
+    cat > "$install_path" << EOF
+#!/bin/bash
+exec "${source_script}" "\$@"
+EOF
+    chmod +x "$install_path"
+    echo -e "${GREEN}  ✓ Installed ${script_name} at ${install_path}${NC}"
+}
+
+if mkdir -p "$INSTALL_DIR" 2>/dev/null; then
+    install_wrapper "new-workspace.sh" "${SCRIPT_DIR}/new-workspace.sh"
+    install_wrapper "del-workspace.sh" "${SCRIPT_DIR}/del-workspace.sh"
+
+    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+        echo -e "${YELLOW}  → ${INSTALL_DIR} is not on PATH${NC}"
+        echo -e "${YELLOW}    Add this to your shell rc:${NC}"
+        echo -e "      export PATH=\"${INSTALL_DIR}:\$PATH\""
+    fi
+else
+    echo -e "${YELLOW}  ⚠ Could not create ${INSTALL_DIR}; skipping install${NC}"
+fi
+echo ""
+
+# Step 3: Ensure workspaces folder exists and check existing workspaces
+echo -e "${BLUE}[3/4] Checking workspaces directory...${NC}"
 if [ ! -d "${PROJECT_ROOT}/workspaces" ]; then
     mkdir -p "${PROJECT_ROOT}/workspaces"
     echo -e "${GREEN}  ✓ Created workspaces directory${NC}"
@@ -154,8 +224,8 @@ else
 fi
 echo ""
 
-# Step 3: Create alpha workspace if it doesn't exist
-echo -e "${BLUE}[3/3] Checking alpha workspace...${NC}"
+# Step 4: Create alpha workspace if it doesn't exist
+echo -e "${BLUE}[4/4] Checking alpha workspace...${NC}"
 if [ ! -d "${PROJECT_ROOT}/workspaces/alpha" ] || [ ! -d "${PROJECT_ROOT}/workspaces/alpha/.devcontainer" ]; then
     if [ -d "${PROJECT_ROOT}/workspaces/alpha" ]; then
         echo -e "${YELLOW}  → Incomplete alpha workspace found, recreating...${NC}"
