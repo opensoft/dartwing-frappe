@@ -121,29 +121,15 @@ echo -e "${YELLOW}  → This will take several minutes...${NC}"
 mkdir -p "$BENCH_DIR"
 cd "$BENCH_DIR"
 
-# Pre-clone apps before bench init if needed (bench commands require an initialized bench)
-if [ ! -f "sites/apps.txt" ]; then
-    mkdir -p "apps"
-    for app in "${APPS[@]}"; do
-        app=$(echo "$app" | xargs)
-        [ -z "$app" ] && continue
-        if [ "$app" = "dartwing" ]; then
-            if [ ! -d "apps/dartwing" ]; then
-                echo -e "${YELLOW}  → Pre-cloning dartwing app before bench init...${NC}"
-                git clone https://github.com/opensoft/frappe-app-dartwing.git "apps/dartwing"
-                echo -e "${GREEN}  ✓ dartwing app pre-cloned${NC}"
-            elif [ -d "apps/dartwing/.git" ]; then
-                echo -e "${YELLOW}  → dartwing already present; checking for updates...${NC}"
-                if git -C "apps/dartwing" diff-index --quiet HEAD -- 2>/dev/null; then
-                    git -C "apps/dartwing" pull --ff-only || echo -e "${YELLOW}  → Update failed or offline; continuing${NC}"
-                else
-                    echo -e "${YELLOW}  → Uncommitted changes in apps/dartwing; skipping pull${NC}"
-                fi
-            else
-                echo -e "${YELLOW}  → apps/dartwing exists but is not a git repo; skipping update${NC}"
-            fi
-        fi
-    done
+# If the workspace already has apps cloned (e.g. new-workspace.sh clones dartwing),
+# keep them out of the way during `bench init` to avoid init/build picking up apps
+# that aren't installed into the bench venv yet.
+PREINIT_APPS_BACKUP=""
+if [ ! -f "sites/apps.txt" ] && [ -d "apps" ] && [ -n "$(ls -A apps 2>/dev/null)" ]; then
+    PREINIT_APPS_BACKUP=".apps.preinit"
+    rm -rf "$PREINIT_APPS_BACKUP" 2>/dev/null || true
+    echo -e "${YELLOW}  → Temporarily moving pre-existing apps for bench init...${NC}"
+    mv "apps" "$PREINIT_APPS_BACKUP"
 fi
 
 # Check if bench is already initialized
@@ -166,6 +152,23 @@ else
     echo -e "${YELLOW}  → Bench already initialized, skipping${NC}"
 fi
 echo ""
+
+# Restore any apps that existed before bench init
+if [ -n "${PREINIT_APPS_BACKUP:-}" ] && [ -d "$PREINIT_APPS_BACKUP" ]; then
+    mkdir -p "apps"
+    for pre_app in "$PREINIT_APPS_BACKUP"/*; do
+        [ -d "$pre_app" ] || continue
+        app_name="$(basename "$pre_app")"
+        if [ -d "apps/$app_name" ]; then
+            echo -e "${YELLOW}  → apps/${app_name} already exists; skipping restore${NC}"
+        else
+            echo -e "${YELLOW}  → Restoring app: ${app_name}${NC}"
+            mv "$pre_app" "apps/$app_name"
+        fi
+    done
+    rmdir "$PREINIT_APPS_BACKUP" 2>/dev/null || true
+    echo ""
+fi
 
 # Ensure common_site_config.json settings (run every time)
 echo -e "${BLUE}Ensuring bench common_site_config.json settings...${NC}"
@@ -203,17 +206,17 @@ for app in "${APPS[@]}"; do
     # If the app was pre-cloned into apps/, register it without overwriting.
     APP_DIR="apps/${app}"
     if [ -d "$APP_DIR" ]; then
+        if [ -x "env/bin/pip" ]; then
+            env/bin/pip install -e "$APP_DIR"
+        fi
         if grep -q "^${app}$" sites/apps.txt 2>/dev/null; then
             echo -e "${YELLOW}  → ${app} already registered (local)${NC}"
         else
             echo -e "${YELLOW}  → Registering existing app: ${app}${NC}"
             echo "${app}" >> sites/apps.txt
-            if [ -x "env/bin/pip" ]; then
-                env/bin/pip install -e "$APP_DIR"
-            fi
-            bench build --app "${app}" || true
             echo -e "${GREEN}  ✓ ${app} registered from existing directory${NC}"
         fi
+        bench build --app "${app}" || true
         continue
     fi
 
