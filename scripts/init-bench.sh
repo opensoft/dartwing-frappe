@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Disable yarn corepack prompts
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,22 +20,8 @@ echo ""
 # Determine script location and workspace root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-BENCH_DIR="${WORKSPACE_ROOT}/bench"
 
-echo -e "${BLUE}Workspace Structure:${NC}"
-echo -e "  Workspace root: ${WORKSPACE_ROOT}"
-echo -e "  Bench directory: ${BENCH_DIR}"
-echo ""
-
-# Check if setup already completed
-SETUP_MARKER="${BENCH_DIR}/.setup_complete"
-if [ -f "$SETUP_MARKER" ]; then
-    echo -e "${GREEN}Setup already completed. Skipping...${NC}"
-    echo -e "${YELLOW}To re-run setup, delete: ${SETUP_MARKER}${NC}"
-    exit 0
-fi
-
-# Load environment variables from .env
+# Load environment variables from .env (required for multi-workspace naming)
 ENV_FILE="${WORKSPACE_ROOT}/.devcontainer/.env"
 if [ -f "$ENV_FILE" ]; then
     while IFS= read -r line; do
@@ -45,16 +34,66 @@ else
     exit 1
 fi
 
+# Determine bench directory (allow override from .env)
+BENCH_DIR="${FRAPPE_BENCH_PATH:-${WORKSPACE_ROOT}/bench}"
+if [[ "$BENCH_DIR" != /* ]]; then
+    BENCH_DIR="${WORKSPACE_ROOT}/${BENCH_DIR}"
+fi
+
+# Determine workspace name/codename.
+# In containers, /workspace is a fixed path, so basename(/workspace) is not useful.
+NAME=""
+if [ -n "${CODENAME:-}" ] && [ "${CODENAME}" != "default" ]; then
+    NAME="${CODENAME}"
+else
+    # Prefer the comment written by scripts/new-workspace.sh
+    if grep -q '^# Workspace:' "$ENV_FILE"; then
+        NAME="$(grep '^# Workspace:' "$ENV_FILE" | head -n1 | sed 's/^# Workspace:[[:space:]]*//')"
+    elif [ -n "${SITE_NAME:-}" ]; then
+        NAME="${SITE_NAME%%.*}"
+    fi
+fi
+if [ -z "$NAME" ]; then
+    NAME=$(basename "$WORKSPACE_ROOT")
+fi
+
+# Set defaults based on NAME
+SITE_NAME="${SITE_NAME:-${NAME}.localhost}"
+DB_NAME="${DB_NAME:-dartwing_${NAME}}"
+if [ -z "${CODENAME:-}" ] || [ "${CODENAME}" = "default" ]; then
+    CODENAME="${NAME}"
+fi
+HOST_PORT="${HOST_PORT:-8000}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
+DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-frappe}"
+
+echo -e "${BLUE}Workspace Structure:${NC}"
+echo -e "  Workspace root: ${WORKSPACE_ROOT}"
+echo -e "  Bench directory: ${BENCH_DIR}"
+echo -e "  Env file: ${ENV_FILE}"
+echo -e "  Workspace name: ${NAME}"
+echo ""
+
 echo -e "${BLUE}Configuration:${NC}"
 echo -e "  Site: ${SITE_NAME}"
 echo -e "  Database: ${DB_NAME}"
 echo -e "  Codename: ${CODENAME}"
+echo -e "  Host port: ${HOST_PORT}"
 echo ""
+
+# Check if setup already completed
+SETUP_MARKER="${BENCH_DIR}/.setup_complete"
+if [ -f "$SETUP_MARKER" ]; then
+    echo -e "${GREEN}Setup already completed. Skipping...${NC}"
+    echo -e "${YELLOW}To re-run setup, delete: ${SETUP_MARKER}${NC}"
+    exit 0
+fi
 
 # Step 1: Initialize Frappe Bench
 echo -e "${BLUE}[1/6] Initializing Frappe bench...${NC}"
 echo -e "${YELLOW}  → This will take several minutes...${NC}"
 
+mkdir -p "$BENCH_DIR"
 cd "$BENCH_DIR"
 
 # Check if bench is already initialized
@@ -113,24 +152,37 @@ IFS=',' read -ra APPS <<< "$APPS_TO_INSTALL"
 
 for app in "${APPS[@]}"; do
     app=$(echo "$app" | xargs) # trim whitespace
-    
-    if [ "$app" == "dartwing" ]; then
-        # Special handling for dartwing app - it's already in apps/ directory
-if ! grep -q "dartwing" sites/apps.txt 2>/dev/null; then
-            if [ -d "${BENCH_DIR}/apps/dartwing" ]; then
-                bench get-app "./apps/dartwing"
-                echo -e "${GREEN}  ✓ dartwing (local) registered with bench${NC}"
-            else
-                echo -e "${YELLOW}  → Local dartwing app not found, cloning from GitHub...${NC}"
-                bench get-app https://github.com/opensoft/frappe-app-dartwing.git
-                echo -e "${GREEN}  ✓ dartwing (GitHub) registered with bench${NC}"
-            fi
+
+    [ -z "$app" ] && continue
+
+    # If the app was pre-cloned into apps/, register it without overwriting.
+    APP_DIR="apps/${app}"
+    if [ -d "$APP_DIR" ]; then
+        if grep -q "^${app}$" sites/apps.txt 2>/dev/null; then
+            echo -e "${YELLOW}  → ${app} already registered (local)${NC}"
         else
-            echo -e "${YELLOW}  → dartwing app already registered${NC}"
+            echo -e "${YELLOW}  → Registering existing app: ${app}${NC}"
+            echo "${app}" >> sites/apps.txt
+            if [ -x "env/bin/pip" ]; then
+                env/bin/pip install -e "$APP_DIR"
+            fi
+            bench build --app "${app}" || true
+            echo -e "${GREEN}  ✓ ${app} registered from existing directory${NC}"
+        fi
+        continue
+    fi
+
+    if [ "$app" == "dartwing" ]; then
+        # Special handling for dartwing app - clone from GitHub if missing
+        if ! grep -q "^dartwing$" sites/apps.txt 2>/dev/null; then
+            echo 'y' | bench get-app https://github.com/opensoft/frappe-app-dartwing.git
+            echo -e "${GREEN}  ✓ dartwing app installed${NC}"
+        else
+            echo -e "${YELLOW}  → dartwing app already installed${NC}"
         fi
     else
         # Generic app installation
-        if ! grep -q "$app" sites/apps.txt 2>/dev/null; then
+        if ! grep -q "^${app}$" sites/apps.txt 2>/dev/null; then
             echo -e "${YELLOW}  → Installing app: ${app}${NC}"
             bench get-app "$app"
             echo -e "${GREEN}  ✓ ${app} registered with bench${NC}"
@@ -146,10 +198,10 @@ echo -e "${BLUE}[3/6] Creating Frappe site...${NC}"
 echo -e "${YELLOW}  → This may take a few minutes...${NC}"
 
 if [ ! -d "sites/${SITE_NAME}" ]; then
-    bench new-site ${SITE_NAME} \
-        --db-name ${DB_NAME} \
-        --admin-password admin \
-        --db-root-password frappe \
+    bench new-site "${SITE_NAME}" \
+        --db-name "${DB_NAME}" \
+        --admin-password "${ADMIN_PASSWORD}" \
+        --db-root-password "${DB_ROOT_PASSWORD}" \
         --no-mariadb-socket
     
     echo -e "${GREEN}  ✓ Site created${NC}"
@@ -212,7 +264,7 @@ echo -e "Site Details:"
 echo -e "  URL: ${BLUE}http://localhost:${HOST_PORT}${NC}"
 echo -e "  Site: ${SITE_NAME}"
 echo -e "  Username: ${YELLOW}Administrator${NC}"
-echo -e "  Password: ${YELLOW}admin${NC}"
+echo -e "  Password: ${YELLOW}${ADMIN_PASSWORD}${NC}"
 echo ""
 echo -e "To start developing:"
 echo -e "  ${YELLOW}cd ${BENCH_DIR}${NC}"
