@@ -57,7 +57,7 @@
   "remoteUser": "${localEnv:USER}",
   "updateRemoteUserUID": false,
 
-  "postCreateCommand": "~/.local/bin/uv tool install specify-cli --force --from git+https://github/spec-kit.git || echo 'Failed to install spec-kit' && echo 'Dartwing Frappe development environment ready'",
-  "postStartCommand": "bash -lc \"set -o pipefail; echo 'Starting Dartwing setup...'; bash /workspace/scripts/setup-workspace.sh 2>&1 | tee /workspace/setup.log; rc=${PIPESTATUS[0]}; if [ $rc -eq 0 ]; then echo 'Setup completed successfully'; else echo 'Setup failed - check /workspace/setup.log'; fi; exit $rc\"",
+  "postCreateCommand": "~/.local/bin/uv tool install specify-cli --from git+https://github.com/github/spec-kit.git || echo 'Failed to install spec-kit'; echo 'Dartwing Frappe development environment ready'",
+  "postStartCommand": "bash -lc \"set -o pipefail; echo 'Starting Dartwing setup...'; bash /workspace/scripts/setup-workspace.sh 2>&1 | tee /workspace/setup.log; rc=$?; if [ $rc -eq 0 ]; then echo 'Setup completed successfully'; else echo 'Setup failed - check /workspace/setup.log'; fi; exit $rc\"",
   "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Frappe bench at /workspace/bench'"
 }

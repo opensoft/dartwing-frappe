@@ -11,6 +11,53 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Helper function to ensure apps.txt doesn't have concatenated entries (e.g., "frappedartwing")
+# This can happen when apps.txt lacks a trailing newline and a new app is appended
+repair_apps_txt() {
+    local apps_file="${1:-sites/apps.txt}"
+    [ -f "$apps_file" ] || return 0
+
+    python3 - "$apps_file" <<'REPAIR_PY'
+import sys
+path = sys.argv[1]
+
+with open(path, "rb") as f:
+    data = f.read()
+
+# Ensure trailing newline
+if data and not data.endswith(b"\n"):
+    data += b"\n"
+
+text = data.decode("utf-8", errors="ignore")
+lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+
+# Common concatenation patterns to repair
+known_apps = ["dartwing", "erpnext", "hrms", "payments", "webshop", "insights", "lms", "wiki", "gameplan", "drive", "builder", "print_designer", "healthcare", "education"]
+repaired = []
+for ln in lines:
+    fixed = False
+    # Check for "frappe<app>" concatenation
+    for app in known_apps:
+        if ln == f"frappe{app}":
+            repaired.extend(["frappe", app])
+            fixed = True
+            break
+    if not fixed:
+        repaired.append(ln)
+
+# Dedupe preserving order
+seen = set()
+final = []
+for ln in repaired:
+    if ln not in seen:
+        seen.add(ln)
+        final.append(ln)
+
+with open(path, "w", encoding="utf-8") as f:
+    f.write("\n".join(final) + "\n")
+REPAIR_PY
+}
+
 echo -e "${BLUE}=========================================="
 echo "Frappe Bench Initialization"
 echo "Running inside devcontainer"
@@ -278,6 +325,7 @@ with open(path, "w", encoding="utf-8") as f:
 PY
             echo -e "${GREEN}  ✓ ${app} registered from existing directory${NC}"
         fi
+        repair_apps_txt  # Ensure apps.txt integrity before bench build
         bench build --app "${app}" || true
         continue
     fi
@@ -376,11 +424,12 @@ fi
 echo ""
 
 if [ ! -d "sites/${SITE_NAME}" ]; then
+    repair_apps_txt  # Ensure apps.txt integrity before site creation
     bench new-site "${SITE_NAME}" \
         --db-name "${DB_NAME}" \
         --admin-password "${ADMIN_PASSWORD}" \
         --db-root-password "${DB_ROOT_PASSWORD}" \
-        --no-mariadb-socket
+        --mariadb-user-host-login-scope='%'
     
     echo -e "${GREEN}  ✓ Site created${NC}"
 else
@@ -396,6 +445,7 @@ for app in "${APPS[@]}"; do
     
     # Check if app is already installed
     if ! bench --site ${SITE_NAME} list-apps 2>/dev/null | grep -q "^${app}$"; then
+        repair_apps_txt  # Ensure apps.txt integrity before install-app
         bench --site ${SITE_NAME} install-app ${app}
         echo -e "${GREEN}  ✓ ${app} installed on site${NC}"
     else
