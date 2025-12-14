@@ -40,6 +40,18 @@ python3-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# ROOT: Installing GPG for repository key management
+RUN apt-get update && apt-get install -y gpg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ROOT: Installing GitHub CLI (gh)
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages focal main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt-get update && apt-get -y install gh \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # ROOT: Installing Node.js LTS version
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs \
@@ -106,6 +118,14 @@ USER $USERNAME
 
 # USERNAME: Verifying bench, Python, and pip installations
 RUN bench --version && python3 --version && pip --version
+
+
+# ========================================
+# USERNAME USER: Setup Credential Helper
+# ========================================
+
+# USERNAME: Configuring git to use gh CLI for credentials
+RUN git config --global credential.helper gh
 
 
 
