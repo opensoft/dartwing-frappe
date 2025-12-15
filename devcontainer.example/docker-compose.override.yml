@@ -21,6 +21,11 @@ services:
       # Location: ~/.claude/ contains API keys and session data
       - ~/.claude:/home/${USER:-vscode}/.claude:cached
 
+      # GitHub CLI Authentication
+      # Required for: gh CLI commands, git credential helper
+      # Location: ~/.config/gh/ contains PAT and authentication data
+      - ~/.config/gh:/home/${USER:-vscode}/.config/gh:cached
+
       # Google Gemini CLI Authentication
       # Required for: VS Code Gemini extension, Gemini CLI tools
       # Location: ~/.gemini/ contains authentication credentials
