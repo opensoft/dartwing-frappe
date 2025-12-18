@@ -1,5 +1,6 @@
 #!/bin/bash
 # Git project detection and validation utility
+# Version: 1.0.0
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

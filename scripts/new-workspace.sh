@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Script metadata for version tracking
+SCRIPT_VERSION="1.0.0"
+SCRIPT_NAME="new-workspace.sh"
+
 # Source utility libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"

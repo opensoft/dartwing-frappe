@@ -1,5 +1,6 @@
 #!/bin/bash
 # Common utility functions for workspace management scripts
+# Version: 1.0.0
 
 # Colors for output
 GREEN='\033[0;32m'

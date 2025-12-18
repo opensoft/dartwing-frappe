@@ -1,5 +1,6 @@
 #!/bin/bash
 # AI-powered assistant for workspace operations with graceful degradation
+# Version: 1.0.0
 
 # Source utility libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
