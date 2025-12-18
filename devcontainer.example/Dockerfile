@@ -155,6 +155,16 @@ RUN npm install -g @google/gemini-cli
 # USERNAME: Installing GitHub Copilot CLI to user-local npm directory (~/.npm-global/bin)
 RUN npm install -g @githubnext/github-copilot-cli
 
+# USERNAME: Installing OpenCode AI terminal coding agent (https://github.com/sst/opencode)
+# OpenCode is an open source AI coding agent that provides terminal-based AI assistance
+# Installed via npm for easy access as a global CLI command
+RUN npm install -g opencode-ai@latest
+
+# USERNAME: Installing Letta Code - memory-first coding agent (https://github.com/letta-ai/letta-code)
+# Letta Code is a stateful coding agent with persistent memory that learns over time
+# Works with long-lived agents that persist across sessions and improve with use
+RUN npm install -g @letta-ai/letta-code
+
 
 
 # ========================================
