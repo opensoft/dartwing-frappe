@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# Source utility libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPT_DIR}/lib/git-project.sh"
+source "${SCRIPT_DIR}/lib/ai-provider.sh"
+source "${SCRIPT_DIR}/lib/ai-assistant.sh"
 
-# Configuration
-FRAPPE_REPO="git@github.com:opensoft/dartwing-frappe.git"
-APP_REPO="git@github.com:opensoft/frappe-app-dartwing.git"
+# Configuration - project-specific repos will be detected
+FRAPPE_REPO=""  # Will be detected from git remote
+APP_REPO=""     # Will be detected based on project type
 
 # NATO phonetic alphabet for workspace naming
 NATO_ALPHABET=(alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november oscar papa quebec romeo sierra tango uniform victor whiskey xray yankee zulu)
@@ -62,60 +62,74 @@ get_next_workspace_name() {
     fi
 }
 
-# Determine project root
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Initialize AI assistant (optional)
+init_ai_assistant
+
+# Detect project context from current directory
+log_section "New Workspace Creator"
+detect_project_context || die "Failed to detect project context"
+display_project_context
 
 # Parse arguments
 WORKSPACE_NAME="${1:-}"
 
 # If no workspace name provided, auto-detect next one
 if [ -z "$WORKSPACE_NAME" ]; then
-    WORKSPACE_NAME=$(get_next_workspace_name "$PROJECT_ROOT")
+    WORKSPACE_NAME=$(get_next_workspace_name "$GIT_ROOT")
     if [ $? -ne 0 ]; then
-        exit 1
+        die "Failed to generate next workspace name"
     fi
-    echo -e "${BLUE}No workspace name provided, auto-detected next: ${YELLOW}${WORKSPACE_NAME}${NC}"
+    log_info "No workspace name provided, auto-detected next: ${WORKSPACE_NAME}"
     echo ""
 fi
 
-echo -e "${BLUE}=========================================="
-echo "New Workspace Creator"
-echo -e "==========================================${NC}"
+# Determine app repository based on project type
+case "$PROJECT_TYPE" in
+    dartwing)
+        APP_REPO="git@github.com:opensoft/frappe-app-dartwing.git"
+        ;;
+    *)
+        log_warn "Unknown project type: $PROJECT_TYPE - using auto-detection for app repo"
+        # Try to find app in workspace or skip if not needed
+        ;;
+esac
+
+NEW_DIR="${WORKSPACES_DIR}/${WORKSPACE_NAME}"
+
+log_info "Configuration:"
+log_info "  Workspace name: ${WORKSPACE_NAME}"
+log_info "  New directory: ${NEW_DIR}"
 echo ""
 
-NEW_DIR="${PROJECT_ROOT}/workspaces/${WORKSPACE_NAME}"
-
-echo -e "${BLUE}Configuration:${NC}"
-echo -e "  Workspace name: ${WORKSPACE_NAME}"
-echo -e "  New directory: ${NEW_DIR}"
-echo ""
+# Validate AI before proceeding
+validate_workspace_operation "new" "$WORKSPACE_NAME" "$PROJECT_TYPE"
 
 # Step 1: Create new workspace subdirectory
-echo -e "${BLUE}[1/4] Creating new workspace directory...${NC}"
+log_subsection "[1/4] Creating new workspace directory..."
 if [ -d "$NEW_DIR" ]; then
-    echo -e "${RED}  ✗ Directory ${NEW_DIR} already exists!${NC}"
+    log_error "Directory ${NEW_DIR} already exists!"
     exit 1
 fi
 
 mkdir -p "${NEW_DIR}/bench/apps"
 mkdir -p "${NEW_DIR}/scripts"
-echo -e "${GREEN}  ✓ Workspace directory created${NC}"
+log_success "Workspace directory created"
 echo ""
 
 # Step 2: Copy devcontainer template
-echo -e "${BLUE}[2/4] Setting up devcontainer configuration...${NC}"
-if [ ! -d "${PROJECT_ROOT}/devcontainer.example" ]; then
-    echo -e "${RED}  ✗ devcontainer.example folder not found!${NC}"
+log_subsection "[2/4] Setting up devcontainer configuration..."
+if [ ! -d "${GIT_ROOT}/devcontainer.example" ]; then
+    log_error "devcontainer.example folder not found!"
     exit 1
 fi
 
-cp -r "${PROJECT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
+cp -r "${GIT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
 # Link workspace scripts to shared versions in repo (mounted at /repo in container)
 ln -s "/repo/scripts/init-bench.sh" "${NEW_DIR}/scripts/init-bench.sh"
 ln -s "/repo/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/setup-workspace.sh"
-echo -e "${GREEN}  ✓ Devcontainer template copied${NC}"
-echo -e "${GREEN}  ✓ Init bench script linked${NC}"
-echo -e "${GREEN}  ✓ Setup workspace script linked${NC}"
+log_success "Devcontainer template copied"
+log_success "Init bench script linked"
+log_success "Setup workspace script linked"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
 BASE_PORT=8201
@@ -172,42 +186,50 @@ APP_BRANCH=main
 # Bench configuration
 FRAPPE_BENCH_PATH=/workspace/bench
 EOF
-echo -e "${GREEN}  ✓ Devcontainer environment configured${NC}"
-echo -e "${YELLOW}  → Container: dartwing-frappe-${WORKSPACE_NAME}${NC}"
-echo -e "${YELLOW}  → Port: ${HOST_PORT}${NC}"
+log_success "Devcontainer environment configured"
+log_info "  Container: dartwing-frappe-${WORKSPACE_NAME}"
+log_info "  Port: ${HOST_PORT}"
 echo ""
 
 # Step 3: Update devcontainer.json name
-echo -e "${BLUE}[3/4] Customizing devcontainer settings...${NC}"
+log_subsection "[3/4] Customizing devcontainer settings..."
 sed -i "s/WORKSPACE_NAME/${WORKSPACE_NAME}/g" "${NEW_DIR}/.devcontainer/devcontainer.json"
-echo -e "${GREEN}  ✓ Devcontainer name updated${NC}"
+log_success "Devcontainer name updated"
 echo ""
 
-# Step 4: Clone frappe-app-dartwing
-echo -e "${BLUE}[4/4] Cloning frappe-app-dartwing...${NC}"
-if [ ! -d "${NEW_DIR}/bench/apps/dartwing" ]; then
-    echo -e "${YELLOW}  → Cloning from GitHub...${NC}"
-    git clone "$APP_REPO" "${NEW_DIR}/bench/apps/dartwing"
-    echo -e "${GREEN}  ✓ dartwing app cloned${NC}"
+# Step 4: Clone app repository (if configured)
+log_subsection "[4/4] Setting up app repository..."
+if [ -n "$APP_REPO" ]; then
+    APP_NAME="dartwing"
+    if [ ! -d "${NEW_DIR}/bench/apps/${APP_NAME}" ]; then
+        log_info "  Cloning from GitHub..."
+        if git clone "$APP_REPO" "${NEW_DIR}/bench/apps/${APP_NAME}"; then
+            log_success "${APP_NAME} app cloned"
+        else
+            log_warn "Failed to clone ${APP_NAME} app - you may need to clone manually"
+        fi
+    else
+        log_warn "${APP_NAME} app already exists, skipping"
+    fi
 else
-    echo -e "${YELLOW}  → dartwing app already exists, skipping${NC}"
+    log_info "  No app repository configured for this project type"
 fi
 echo ""
 
-echo -e "${GREEN}=========================================="
-echo "New Workspace Created!"
-echo -e "==========================================${NC}"
+log_section "New Workspace Created!"
+log_info "Workspace Details:"
+log_info "  Name: ${WORKSPACE_NAME}"
+log_info "  Location: ${NEW_DIR}"
+log_info "  Bench: ${NEW_DIR}/bench"
+log_info "  Container: dartwing-frappe-${WORKSPACE_NAME}"
+log_info "  Port: ${HOST_PORT}"
 echo ""
-echo -e "Workspace Details:"
-echo -e "  Name: ${BLUE}${WORKSPACE_NAME}${NC}"
-echo -e "  Location: ${BLUE}${NEW_DIR}${NC}"
-echo -e "  Bench: ${BLUE}${NEW_DIR}/bench${NC}"
-echo -e "  Container: ${BLUE}dartwing-frappe-${WORKSPACE_NAME}${NC}"
-echo -e "  Port: ${BLUE}${HOST_PORT}${NC}"
+log_info "Next Steps:"
+log_info "  1. cd ${NEW_DIR}"
+log_info "  2. code . (open workspace in VSCode)"
+log_info "  3. Click 'Reopen in Container' when prompted"
+log_info "  4. Access at: http://localhost:${HOST_PORT}"
 echo ""
-echo -e "Next Steps:"
-echo -e "  1. ${YELLOW}cd ${NEW_DIR}${NC}"
-echo -e "  2. ${YELLOW}code .${NC} (open workspace in VSCode)"
-echo -e "  3. Click ${YELLOW}'Reopen in Container'${NC} when prompted"
-echo -e "  4. Access at: ${YELLOW}http://localhost:${HOST_PORT}${NC}"
-echo ""
+
+# Report success to AI if available
+report_success_to_ai "create" "$WORKSPACE_NAME"

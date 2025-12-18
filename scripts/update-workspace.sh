@@ -1,54 +1,57 @@
 #!/bin/bash
 set -e
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# Source utility libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPT_DIR}/lib/git-project.sh"
+source "${SCRIPT_DIR}/lib/ai-provider.sh"
+source "${SCRIPT_DIR}/lib/ai-assistant.sh"
 
-# Determine project root
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Initialize AI assistant (optional)
+init_ai_assistant
+
+# Detect project context from current directory
+log_section "Workspace Updater"
+detect_project_context || die "Failed to detect project context"
+display_project_context
 
 # Parse arguments
 TARGET="${1:--all}"
 
-echo -e "${BLUE}=========================================="
-echo "Workspace Updater"
-echo -e "==========================================${NC}"
-echo ""
-
 # Function to update a single workspace
 update_single_workspace() {
     local workspace_name="$1"
-    local workspace_dir="${PROJECT_ROOT}/workspaces/${workspace_name}"
+    local workspace_dir="${WORKSPACES_DIR}/${workspace_name}"
     
     # Validate workspace exists
     if [ ! -d "$workspace_dir" ]; then
-        echo -e "${RED}  ✗ Workspace directory ${workspace_dir} not found!${NC}"
+        log_error "Workspace directory ${workspace_dir} not found!"
         return 1
     fi
     
     # Validate .devcontainer exists (it should, but check anyway)
     if [ ! -d "${workspace_dir}/.devcontainer" ]; then
-        echo -e "${RED}  ✗ .devcontainer directory not found in ${workspace_dir}!${NC}"
+        log_error ".devcontainer directory not found in ${workspace_dir}!"
         return 1
     fi
     
-    echo -e "${BLUE}Updating workspace: ${YELLOW}${workspace_name}${NC}"
+    log_info "Updating workspace: ${workspace_name}"
+    
+    # Validate with AI before proceeding
+    validate_workspace_operation "update" "$workspace_name" "$PROJECT_TYPE"
     
     # Step 1: Backup current .env if it exists (preserve custom settings)
     if [ -f "${workspace_dir}/.devcontainer/.env" ]; then
         cp "${workspace_dir}/.devcontainer/.env" "${workspace_dir}/.devcontainer/.env.backup"
-        echo -e "${GREEN}  ✓ .env backed up to .env.backup${NC}"
+        log_success ".env backed up to .env.backup"
     fi
     
     # Step 2: Copy updated devcontainer files from example (preserves .env and .env.backup)
-    echo -e "${BLUE}  [1/3] Updating devcontainer configuration...${NC}"
+    log_subsection "[1/3] Updating devcontainer configuration..."
     
     # Copy all files except .env (which we want to preserve)
-    for file in "${PROJECT_ROOT}/devcontainer.example"/*; do
+    for file in "${GIT_ROOT}/devcontainer.example"/*; do
         filename=$(basename "$file")
         # Skip .env files as we preserve those
         if [[ "$filename" != ".env" ]]; then
@@ -62,10 +65,10 @@ update_single_workspace() {
             fi
         fi
     done
-    echo -e "${GREEN}  ✓ Devcontainer files updated${NC}"
+    log_success "Devcontainer files updated"
     
     # Step 3: Preserve and reapply .env settings
-    echo -e "${BLUE}  [2/3] Preserving workspace environment configuration...${NC}"
+    log_subsection "[2/3] Preserving workspace environment configuration..."
     
     if [ -f "${workspace_dir}/.devcontainer/.env.backup" ]; then
         # Extract workspace name from existing .env to validate it
@@ -113,20 +116,20 @@ APP_BRANCH=main
 # Bench configuration
 FRAPPE_BENCH_PATH=/workspace/bench
 EOF
-        echo -e "${GREEN}  ✓ Environment configuration preserved${NC}"
+        log_success "Environment configuration preserved"
         
         # Clean up backup
         rm "${workspace_dir}/.devcontainer/.env.backup"
     fi
     
     # Step 4: Update devcontainer.json name with workspace name
-    echo -e "${BLUE}  [3/3] Customizing devcontainer settings...${NC}"
+    log_subsection "[3/3] Customizing devcontainer settings..."
     if [ -f "${workspace_dir}/.devcontainer/devcontainer.json" ]; then
         sed -i "s/WORKSPACE_NAME/${workspace_name}/g" "${workspace_dir}/.devcontainer/devcontainer.json"
-        echo -e "${GREEN}  ✓ Devcontainer name updated${NC}"
+        log_success "Devcontainer name updated"
     fi
     
-    echo -e "${GREEN}  ✓ Workspace ${workspace_name} updated successfully${NC}"
+    log_success "Workspace ${workspace_name} updated successfully"
     echo ""
     return 0
 }
@@ -134,21 +137,19 @@ EOF
 # Main logic
 if [ "$TARGET" = "-all" ]; then
     # Update all workspaces
-    echo -e "${BLUE}Configuration:${NC}"
-    echo -e "  Target: ${YELLOW}all workspaces${NC}"
+    log_info "Configuration:"
+    log_info "  Target: all workspaces"
     echo ""
     
-    workspaces_dir="${PROJECT_ROOT}/workspaces"
-    
-    if [ ! -d "$workspaces_dir" ] || [ -z "$(ls -A "$workspaces_dir" 2>/dev/null)" ]; then
-        echo -e "${RED}No workspaces found in ${workspaces_dir}!${NC}"
+    if [ ! -d "$WORKSPACES_DIR" ] || [ -z "$(ls -A "$WORKSPACES_DIR" 2>/dev/null)" ]; then
+        log_error "No workspaces found in ${WORKSPACES_DIR}!"
         exit 1
     fi
     
     failed_count=0
     success_count=0
     
-    for workspace_dir in "${workspaces_dir}"/*; do
+    for workspace_dir in "${WORKSPACES_DIR}"/*; do
         if [ -d "$workspace_dir" ]; then
             workspace_name=$(basename "$workspace_dir")
             if update_single_workspace "$workspace_name"; then
@@ -159,35 +160,30 @@ if [ "$TARGET" = "-all" ]; then
         fi
     done
     
-    echo -e "${BLUE}=========================================="
-    echo "Update Complete!"
-    echo -e "==========================================${NC}"
-    echo ""
-    echo -e "Results:"
-    echo -e "  Successful: ${GREEN}${success_count}${NC}"
+    log_section "Update Complete!"
+    log_info "Results:"
+    log_success "Successful: ${success_count}"
     if [ $failed_count -gt 0 ]; then
-        echo -e "  Failed: ${RED}${failed_count}${NC}"
+        log_error "Failed: ${failed_count}"
         exit 1
     fi
 else
     # Update specific workspace
-    echo -e "${BLUE}Configuration:${NC}"
-    echo -e "  Target: ${YELLOW}${TARGET}${NC}"
+    log_info "Configuration:"
+    log_info "  Target: ${TARGET}"
     echo ""
     
     if update_single_workspace "$TARGET"; then
-        echo -e "${BLUE}=========================================="
-        echo "Workspace Updated!"
-        echo -e "==========================================${NC}"
+        log_section "Workspace Updated!"
+        log_info "Workspace Details:"
+        log_info "  Name: ${TARGET}"
+        log_info "  Location: ${WORKSPACES_DIR}/${TARGET}"
         echo ""
-        echo -e "Workspace Details:"
-        echo -e "  Name: ${BLUE}${TARGET}${NC}"
-        echo -e "  Location: ${BLUE}${PROJECT_ROOT}/workspaces/${TARGET}${NC}"
+        log_info "Next Steps:"
+        log_info "  1. Rebuild the container: docker-compose rebuild"
+        log_info "  2. Reopen in container in VSCode"
         echo ""
-        echo -e "Next Steps:"
-        echo -e "  1. Rebuild the container: ${YELLOW}docker-compose rebuild${NC}"
-        echo -e "  2. Reopen in container in VSCode"
-        echo ""
+        report_success_to_ai "update" "$TARGET"
     else
         exit 1
     fi
