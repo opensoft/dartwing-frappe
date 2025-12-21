@@ -58,6 +58,6 @@
   "updateRemoteUserUID": false,
 
   "postCreateCommand": "~/.local/bin/uv tool install specify-cli --from git+https://github.com/github/spec-kit.git || echo 'Failed to install spec-kit'; echo 'Dartwing Frappe development environment ready'",
-  "postStartCommand": "bash -lc \"set -o pipefail; echo 'Starting Dartwing setup...'; bash /workspace/scripts/setup-workspace.sh 2>&1 | tee /workspace/setup.log; rc=$?; if [ $rc -eq 0 ]; then echo 'Setup completed successfully'; bash /workspace/scripts/daemonize.sh bash /workspace/scripts/bench-watchdog.sh; echo 'Bench watchdog daemonized'; fi; exit $rc\"",
+  "postStartCommand": "bash -l /workspace/scripts/post-start.sh",
   "postAttachCommand": "echo 'Connected to Dartwing Frappe workspace. Bench running (auto-restarting). Logs: tail -f /workspace/bench.log | Watchdog: tail -f /workspace/bench-watchdog.log'"
 }
