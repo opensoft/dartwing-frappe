@@ -100,6 +100,7 @@ update_single_workspace() {
         "init-bench.sh"
         "setup-workspace.sh"
         "bench-watchdog.sh"
+        "daemonize.sh"
     )
     
     for script in "${required_scripts[@]}"; do

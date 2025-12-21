@@ -150,10 +150,12 @@ cp -r "${GIT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
 ln -s "/repo/scripts/init-bench.sh" "${NEW_DIR}/scripts/init-bench.sh"
 ln -s "/repo/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/setup-workspace.sh"
 ln -s "/repo/scripts/bench-watchdog.sh" "${NEW_DIR}/scripts/bench-watchdog.sh"
+ln -s "/repo/scripts/daemonize.sh" "${NEW_DIR}/scripts/daemonize.sh"
 log_success "Devcontainer template copied"
 log_success "Init bench script linked"
 log_success "Setup workspace script linked"
 log_success "Bench watchdog script linked"
+log_success "Daemonize wrapper linked"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
 BASE_PORT=8201
