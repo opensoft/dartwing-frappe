@@ -5,12 +5,30 @@ set -e
 SCRIPT_VERSION="1.0.0"
 SCRIPT_NAME="new-workspace.sh"
 
-# Source utility libraries
+# Smart library sourcing - tries workBench first, then local
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
-source "${SCRIPT_DIR}/lib/git-project.sh"
-source "${SCRIPT_DIR}/lib/ai-provider.sh"
-source "${SCRIPT_DIR}/lib/ai-assistant.sh"
+BENCH_TYPE="frappeBench"
+WORKBENCH_LIB="/home/brett/projects/workBenches/devBenches/${BENCH_TYPE}/scripts/lib"
+
+source_lib() {
+    local lib_name="$1"
+    # Try workBench first
+    if [ -f "${WORKBENCH_LIB}/${lib_name}" ]; then
+        source "${WORKBENCH_LIB}/${lib_name}"
+    # Fall back to local
+    elif [ -f "${SCRIPT_DIR}/lib/${lib_name}" ]; then
+        source "${SCRIPT_DIR}/lib/${lib_name}"
+    else
+        echo "Error: Could not find library ${lib_name}" >&2
+        exit 1
+    fi
+}
+
+# Source utility libraries
+source_lib "common.sh"
+source_lib "git-project.sh"
+source_lib "ai-provider.sh"
+source_lib "ai-assistant.sh"
 
 # Configuration - project-specific repos will be detected
 FRAPPE_REPO=""  # Will be detected from git remote
@@ -131,9 +149,11 @@ cp -r "${GIT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
 # Link workspace scripts to shared versions in repo (mounted at /repo in container)
 ln -s "/repo/scripts/init-bench.sh" "${NEW_DIR}/scripts/init-bench.sh"
 ln -s "/repo/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/setup-workspace.sh"
+ln -s "/repo/scripts/bench-watchdog.sh" "${NEW_DIR}/scripts/bench-watchdog.sh"
 log_success "Devcontainer template copied"
 log_success "Init bench script linked"
 log_success "Setup workspace script linked"
+log_success "Bench watchdog script linked"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
 BASE_PORT=8201
