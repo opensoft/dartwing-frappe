@@ -12,12 +12,12 @@ fi
 (
     # First fork - creates new process group
     # Redirect stdin from /dev/null and stdout/stderr to prevent blocking
-    setsid bash -c "
+    setsid bash -c '
         # Second fork - ensures process is adopted by init
         (
-            exec \"$@\" < /dev/null > /dev/null 2>&1
+            exec "$@" < /dev/null > /dev/null 2>&1
         ) &
-    " &
+    ' -- "$@" &
 ) &
 
 # Parent exits immediately, leaving the double-forked child to be adopted by PID 1
