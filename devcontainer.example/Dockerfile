@@ -14,7 +14,7 @@ USER root
 # ROOT USER: TOOLING SETUP - System-wide development tools
 # ========================================
 
-# ROOT: Installing additional development tools (git, vim, nano, curl, wget, jq, networking tools, sudo, zsh)
+# ROOT: Installing additional development tools (git, vim, nano, curl, wget, jq, networking tools, sudo, zsh, screen)
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     git \
@@ -27,6 +27,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     net-tools \
     sudo \
     zsh \
+    screen \
     python3 \
     python3-pip \
 python3-dev \
