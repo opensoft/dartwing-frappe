@@ -5,12 +5,30 @@ set -e
 SCRIPT_VERSION="1.0.0"
 SCRIPT_NAME="update-workspace.sh"
 
-# Source utility libraries
+# Smart library sourcing - tries workBench first, then local
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
-source "${SCRIPT_DIR}/lib/git-project.sh"
-source "${SCRIPT_DIR}/lib/ai-provider.sh"
-source "${SCRIPT_DIR}/lib/ai-assistant.sh"
+BENCH_TYPE="frappeBench"
+WORKBENCH_LIB="/home/brett/projects/workBenches/devBenches/${BENCH_TYPE}/scripts/lib"
+
+source_lib() {
+    local lib_name="$1"
+    # Try workBench first
+    if [ -f "${WORKBENCH_LIB}/${lib_name}" ]; then
+        source "${WORKBENCH_LIB}/${lib_name}"
+    # Fall back to local
+    elif [ -f "${SCRIPT_DIR}/lib/${lib_name}" ]; then
+        source "${SCRIPT_DIR}/lib/${lib_name}"
+    else
+        echo "Error: Could not find library ${lib_name}" >&2
+        exit 1
+    fi
+}
+
+# Source utility libraries
+source_lib "common.sh"
+source_lib "git-project.sh"
+source_lib "ai-provider.sh"
+source_lib "ai-assistant.sh"
 
 # Initialize AI assistant (optional)
 init_ai_assistant
@@ -71,8 +89,36 @@ update_single_workspace() {
     done
     log_success "Devcontainer files updated"
     
+    # Step 2.5: Ensure all script symlinks are present
+    log_subsection "[2/3] Updating workspace script symlinks..."
+    
+    # Ensure scripts directory exists
+    mkdir -p "${workspace_dir}/scripts"
+    
+    # Required script symlinks
+    declare -a required_scripts=(
+        "init-bench.sh"
+        "setup-workspace.sh"
+        "bench-watchdog.sh"
+    )
+    
+    for script in "${required_scripts[@]}"; do
+        symlink_path="${workspace_dir}/scripts/${script}"
+        target_path="/repo/scripts/${script}"
+        
+        # Remove old symlink or file if exists
+        if [ -e "$symlink_path" ] || [ -L "$symlink_path" ]; then
+            rm -f "$symlink_path"
+        fi
+        
+        # Create new symlink
+        ln -s "$target_path" "$symlink_path"
+    done
+    
+    log_success "Script symlinks updated"
+    
     # Step 3: Preserve and reapply .env settings
-    log_subsection "[2/3] Preserving workspace environment configuration..."
+    log_subsection "[3/4] Preserving workspace environment configuration..."
     
     if [ -f "${workspace_dir}/.devcontainer/.env.backup" ]; then
         # Extract workspace name from existing .env to validate it
@@ -127,7 +173,7 @@ EOF
     fi
     
     # Step 4: Update devcontainer.json name with workspace name
-    log_subsection "[3/3] Customizing devcontainer settings..."
+    log_subsection "[4/4] Customizing devcontainer settings..."
     if [ -f "${workspace_dir}/.devcontainer/devcontainer.json" ]; then
         sed -i "s/WORKSPACE_NAME/${workspace_name}/g" "${workspace_dir}/.devcontainer/devcontainer.json"
         log_success "Devcontainer name updated"
