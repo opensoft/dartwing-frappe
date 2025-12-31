@@ -1,0 +1,65 @@
+# Compose project name for Docker Desktop grouping
+name: ${COMPOSE_PROJECT_NAME:-frappe}
+services:
+  dartwing-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: ${USER:-vscode}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${CONTAINER_NAME:-frappe-dev}
+    ports:
+      - "${HOST_PORT:-8201}:8000"
+
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      # Workspace (includes local workspaces/frappe-bench)
+      - ../:/workspace:cached
+      # Mount repo root (3 levels up from workspaces/<name>/.devcontainer) for shared scripts
+      - ../../..:/repo:ro
+
+      # Mount Docker socket to enable docker commands inside container
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      
+      # Shell configurations
+      - ~/.zshrc:/home/${USER:-frappe}/.zshrc:ro
+      - ~/.bashrc:/home/${USER:-frappe}/.bashrc:ro
+      - ~/.oh-my-zsh:/home/${USER:-frappe}/.oh-my-zsh:ro
+      - ~/.p10k.zsh:/home/${USER:-frappe}/.p10k.zsh:ro
+      
+      # Git configuration
+      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
+      
+      # SSH configurations and keys
+      - ~/.ssh/config:/home/${USER:-vscode}/.ssh/config:ro
+      - ~/.ssh/id_ed25519:/home/${USER:-vscode}/.ssh/id_ed25519:ro
+      - ~/.ssh/id_ed25519.pub:/home/${USER:-vscode}/.ssh/id_ed25519.pub:ro
+      - ~/.ssh/id_rsa_ado:/home/${USER:-vscode}/.ssh/id_rsa_ado:ro
+      - ~/.ssh/id_rsa_ado.pub:/home/${USER:-vscode}/.ssh/id_rsa_ado.pub:ro
+      - ~/.ssh/known_hosts:/home/${USER:-vscode}/.ssh/known_hosts:ro
+      
+      # GitHub CLI configuration (for PAT and gh commands)
+      - ~/.config/gh:/home/${USER:-vscode}/.config/gh:ro
+    command: sleep infinity
+    networks:
+      - frappe-network
+    environment:
+      # PATH for user-local binaries (npm, uv, etc)
+      - PATH=$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      # Connect to existing Frappe infrastructure services
+      - DB_HOST=frappe-mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=frappe-redis-cache:6379
+      - REDIS_QUEUE=frappe-redis-queue:6379
+      - REDIS_SOCKETIO=frappe-redis-socketio:6379
+      # Disable SSH agent auto-start (SSH files are read-only in container)
+      - DISABLE_AUTO_SSH_AGENT=1
+      # GitHub token for gh CLI (fallback if gh config mount doesn't work)
+      - GH_TOKEN=${GH_TOKEN:-}
+
+networks:
+  # Reference the external network created by the main frappe devcontainer
+  frappe-network:
+    external: true
