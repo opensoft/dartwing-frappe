@@ -2,27 +2,55 @@
 
 Development workspace for the Dartwing Frappe application with isolated bench instances for parallel development.
 
+## Architecture
+
+This project leverages the **workBenches layered container architecture** from frappeBench:
+
+- **Layer 0** (`workbench-base:$USER`) - Ubuntu 24.04, git, editors, CLI tools
+- **Layer 1a** (`devbench-base:$USER`) - Python, Node.js, AI CLIs (Claude, Copilot, etc.)
+- **Layer 2** (`frappe-bench:$USER`) - Frappe-specific tools (MariaDB client, Redis tools, Nginx, frappe-bench)
+
+This means:
+- ✅ Faster builds (uses cached layers)
+- ✅ Consistent tooling across Frappe projects
+- ✅ Automatic updates when frappeBench updates
+- ✅ Shared infrastructure (MariaDB, Redis) across workspaces
+
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose
-- VSCode with Dev Containers extension
-- Frappe infrastructure (MariaDB, Redis)
+1. **Docker and Docker Compose**
+2. **VSCode with Dev Containers extension**
+3. **workBenches frappeBench** (required dependency)
+
+   If not installed:
+   ```bash
+   cd ~/projects/workBenches
+   ./setup.sh
+   # Select 'frappeBench' from the devBenches list
+   ```
+
+   Or if already installed, ensure the image is built:
+   ```bash
+   cd ~/projects/workBenches/devBenches/frappeBench
+   ./build-layer2.sh --user $USER
+   ```
 
 ### Setup
 
-1. **Start Infrastructure**
+1. **Verify frappeBench Image**
    ```bash
-   cd /home/brett/projects/workBenches/devBenches/frappeBench
-   docker compose up -d mariadb redis-cache redis-queue redis-socketio
+   docker image inspect frappe-bench:$USER
+   # Should show the image details
    ```
 
 2. **Clone and Setup**
    ```bash
-   cd /home/brett/projects/dartwing
-   git clone git@github.com:opensoft/dartwing-frappe.git
-   cd dartwing-frappe
+   cd ~/projects/Dartwing
+   git clone git@github.com:opensoft/dartwing-frappe.git frappe
+   cd frappe
    ./setup.sh
+   # The script will check for frappe-bench image and guide you if missing
    ```
 
 3. **Open in VSCode**
@@ -111,8 +139,19 @@ bench --site dartwing.localhost mariadb  # Access database
 
 ## Troubleshooting
 
+**Missing frappe-bench image?**
+```bash
+# Install frappeBench from workBenches
+cd ~/projects/workBenches
+./setup.sh
+# Select 'frappeBench' from the devBenches list
+```
+
 **Container won't start?**
 ```bash
+# Verify frappe-bench image exists
+docker image inspect frappe-bench:$USER
+
 # Verify infrastructure is running
 docker ps | grep frappe
 docker network ls | grep frappe-network

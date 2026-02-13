@@ -20,6 +20,28 @@ echo ""
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="${PROJECT_ROOT}/scripts"
 
+# Check for frappe-bench image (required dependency)
+USERNAME="${USER:-$(whoami)}"
+if ! docker image inspect "frappe-bench:${USERNAME}" >/dev/null 2>&1; then
+    echo -e "${RED}Error: frappe-bench:${USERNAME} image not found!${NC}"
+    echo -e ""
+    echo -e "${YELLOW}This project requires the frappeBench from workBenches.${NC}"
+    echo -e ""
+    echo -e "${BLUE}To install:${NC}"
+    echo -e "  1. cd ~/projects/workBenches"
+    echo -e "  2. ./setup.sh"
+    echo -e "  3. Select 'frappeBench' from the devBenches list"
+    echo -e "  4. Return here and run ./setup.sh again"
+    echo -e ""
+    echo -e "${BLUE}Or if frappeBench is already installed:${NC}"
+    echo -e "  cd ~/projects/workBenches/devBenches/frappeBench"
+    echo -e "  ./build-layer2.sh --user ${USERNAME}"
+    echo -e ""
+    exit 1
+fi
+echo -e "${GREEN}✓ frappe-bench:${USERNAME} image found${NC}"
+echo -e ""
+
 # Step 1: Check prerequisites
 echo -e "${BLUE}[1/4] Checking prerequisites...${NC}"
 

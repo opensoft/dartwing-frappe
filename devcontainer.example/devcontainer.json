@@ -1,8 +1,11 @@
 {
-  "name": "Dartwing Frappe - WORKSPACE_NAME",
+  "name": "Dartwing Frappe (WORKSPACE_NAME)",
+  "_devcontainer_version": "2.0.0",
+  "_template_version": "dartwing-frappe-devcontainer-2.0.0",
+  "_architecture": "Uses frappe-bench:${USER} from workBenches layered architecture",
 
-  // This devcontainer connects to the existing Frappe infrastructure
-  // Those resources are in the infrastructure started from /home/brett/projects/frappe.
+  // This devcontainer uses frappe-bench image from workBenches
+  // Requires: ~/projects/workBenches/devBenches/frappeBench to be installed
   "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "dartwing-dev",
   "workspaceFolder": "/workspace",

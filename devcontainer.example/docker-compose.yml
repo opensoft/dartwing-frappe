@@ -2,14 +2,8 @@
 name: ${COMPOSE_PROJECT_NAME:-frappe}
 services:
   dartwing-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        USERNAME: ${USER:-vscode}
-        USER_UID: ${UID:-1000}
-        USER_GID: ${GID:-1000}
-    container_name: ${CONTAINER_NAME:-frappe-dev}
+    image: frappe-bench:${USER}
+    container_name: ${CONTAINER_NAME:-dartwing-frappe-dev}
     ports:
       - "${HOST_PORT:-8201}:8000"
 
