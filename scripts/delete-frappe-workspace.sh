@@ -83,15 +83,19 @@ fi
 log_subsection "[1/3] Stopping and removing containers...\n"
 
 if [ -f "${WORKSPACE_DIR}/.devcontainer/docker-compose.yml" ]; then
-    if command_exists docker-compose; then
-        log_info "Stopping containers..."
-        cd "$WORKSPACE_DIR"
-        docker-compose down 2>/dev/null || log_warn "Failed to stop containers (they may already be stopped)"
-        cd - >/dev/null
-        log_success "Containers stopped"
+    log_info "Stopping containers..."
+    cd "${WORKSPACE_DIR}/.devcontainer"
+    
+    # Try modern 'docker compose' first, fall back to 'docker-compose'
+    if docker compose down 2>/dev/null; then
+        log_success "Containers stopped and removed"
+    elif command_exists docker-compose && docker-compose down 2>/dev/null; then
+        log_success "Containers stopped and removed"
     else
-        log_warn "docker-compose not found, skipping container cleanup"
+        log_warn "Failed to stop containers (they may already be stopped)"
     fi
+    
+    cd - >/dev/null
 else
     log_info "No docker-compose.yml found, skipping container cleanup"
 fi

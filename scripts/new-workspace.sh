@@ -192,7 +192,16 @@ echo -e "${BLUE}[1/5] Creating directory structure...${NC}"
 mkdir -p "${WORKSPACE_DIR}"
 mkdir -p "${WORKSPACE_DIR}/.devcontainer"
 mkdir -p "${WORKSPACE_DIR}/bench/apps"
+mkdir -p "${WORKSPACE_DIR}/scripts"
 echo -e "${GREEN}  ✓ Directories created${NC}"
+
+# Create symlinks to shared scripts (mounted at /repo in container)
+ln -s "/repo/scripts/init-bench.sh" "${WORKSPACE_DIR}/scripts/init-bench.sh"
+ln -s "/repo/scripts/setup-workspace.sh" "${WORKSPACE_DIR}/scripts/setup-workspace.sh"
+ln -s "/repo/scripts/bench-watchdog.sh" "${WORKSPACE_DIR}/scripts/bench-watchdog.sh"
+ln -s "/repo/scripts/daemonize.sh" "${WORKSPACE_DIR}/scripts/daemonize.sh"
+ln -s "/repo/scripts/post-start.sh" "${WORKSPACE_DIR}/scripts/post-start.sh"
+echo -e "${GREEN}  ✓ Script symlinks created${NC}"
 echo ""
 
 # Copy devcontainer template

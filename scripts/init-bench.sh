@@ -163,25 +163,64 @@ fi
 
 # Step 1: Initialize Frappe Bench
 echo -e "${BLUE}[1/6] Initializing Frappe bench...${NC}"
-echo -e "${YELLOW}  → This will take several minutes...${NC}"
 
 mkdir -p "$BENCH_DIR"
 cd "$BENCH_DIR"
 
 # If the workspace already has apps cloned (e.g. new-workspace.sh clones dartwing),
-# keep them out of the way during `bench init` to avoid init/build picking up apps
-# that aren't installed into the bench venv yet.
+# keep them out of the way during bench init/copy to avoid conflicts.
 PREINIT_APPS_BACKUP=""
 if [ ! -f "sites/apps.txt" ] && [ -d "apps" ] && [ -n "$(ls -A apps 2>/dev/null)" ]; then
     PREINIT_APPS_BACKUP=".apps.preinit"
     rm -rf "$PREINIT_APPS_BACKUP" 2>/dev/null || true
-    echo -e "${YELLOW}  → Temporarily moving pre-existing apps for bench init...${NC}"
+    echo -e "${YELLOW}  → Temporarily moving pre-existing apps...${NC}"
     mv "apps" "$PREINIT_APPS_BACKUP"
 fi
 
 # Check if bench is already initialized
 if [ ! -f "sites/apps.txt" ]; then
-bench init --skip-redis-config-generation --ignore-exist --frappe-branch version-15 .
+    # Check for pre-built template in Docker image (MUCH faster)
+    TEMPLATE_DIR="${FRAPPE_TEMPLATE_DIR:-/opt/frappe-bench-template}"
+    
+    if [ -d "$TEMPLATE_DIR" ] && [ -f "${TEMPLATE_DIR}/.bench-requirements-ok" ]; then
+        echo -e "${GREEN}  → Using pre-built bench template (fast path)${NC}"
+        echo -e "${YELLOW}  → Copying from ${TEMPLATE_DIR}...${NC}"
+        
+        # Copy the template structure (excluding env and .git dirs for speed)
+        mkdir -p "$BENCH_DIR"
+        cp -r "${TEMPLATE_DIR}/apps" "$BENCH_DIR/" 2>/dev/null || true
+        cp -r "${TEMPLATE_DIR}/sites" "$BENCH_DIR/" 2>/dev/null || true
+        cp -r "${TEMPLATE_DIR}/config" "$BENCH_DIR/" 2>/dev/null || true
+        cp -r "${TEMPLATE_DIR}/logs" "$BENCH_DIR/" 2>/dev/null || true
+        cp "${TEMPLATE_DIR}/Procfile" "$BENCH_DIR/" 2>/dev/null || true
+        cp "${TEMPLATE_DIR}/patches.txt" "$BENCH_DIR/" 2>/dev/null || true
+        
+        cd "$BENCH_DIR"
+        
+        # Create fresh virtualenv for this location
+        echo -e "${YELLOW}  → Creating virtualenv...${NC}"
+        python3 -m venv env
+        
+        # Install frappe and template apps in the new venv
+        echo -e "${YELLOW}  → Installing frappe framework...${NC}"
+        ./env/bin/pip install --quiet --upgrade pip
+        ./env/bin/pip install --quiet -e apps/frappe
+        
+        # Install other template apps if they exist
+        for app_dir in apps/erpnext apps/payments; do
+            if [ -d "$app_dir" ]; then
+                echo -e "${YELLOW}  → Installing $(basename $app_dir)...${NC}"
+                ./env/bin/pip install --quiet -e "$app_dir"
+            fi
+        done
+        
+        echo -e "${GREEN}  ✓ Bench created from template (~1-2 minutes vs ~5-10 minutes)${NC}"
+    else
+        echo -e "${YELLOW}  → No pre-built template found, running bench init (slow path)...${NC}"
+        echo -e "${YELLOW}  → This will take several minutes...${NC}"
+        bench init --skip-redis-config-generation --ignore-exist --frappe-branch version-15 .
+        echo -e "${GREEN}  ✓ Bench initialized${NC}"
+    fi
     
     # Configure Redis and DB connections
     cat > sites/common_site_config.json << 'EOF'
@@ -193,8 +232,6 @@ bench init --skip-redis-config-generation --ignore-exist --frappe-branch version
  "redis_socketio": "redis://frappe-redis-socketio:6379"
 }
 EOF
-    
-    echo -e "${GREEN}  ✓ Bench initialized${NC}"
 else
     echo -e "${YELLOW}  → Bench already initialized, skipping${NC}"
 fi
